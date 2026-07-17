@@ -1,0 +1,11 @@
+# Dependencies (reinstalled via "npm install", never committed)
+node_modules/
+
+# Build output (regenerated via "npm run build")
+dist/
+
+# Local secrets - never commit your real API key
+.env
+
+# Editor/OS noise
+.DS_Store
