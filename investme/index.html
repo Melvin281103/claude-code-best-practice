@@ -1,0 +1,63 @@
+<!--
+  This is the single HTML page that loads the whole InvestMe app.
+  React takes over the <div id="root"> below and renders every
+  screen inside it (this is called a "Single Page App").
+-->
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- width=device-width + initial-scale=1 makes the app render at
+         real mobile size instead of a zoomed-out "desktop" view -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <!-- PWA metadata: theme-color paints the browser's address bar / status bar -->
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="description" content="InvestMe - assistant personnel d'aide à la décision d'investissement" />
+
+    <!-- iOS-specific tags so "Add to Home Screen" behaves like a real app -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="InvestMe" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+    <!-- The Web App Manifest tells mobile browsers this is an installable app -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/icons/icon-192.png" />
+
+    <title>InvestMe</title>
+
+    <!--
+      Tailwind CSS loaded from a CDN (no build step / no config file needed).
+      The script scans the page's class names and generates matching CSS
+      on the fly, right in the browser.
+    -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Extend Tailwind's default colors with InvestMe's dark theme palette
+      // so we can write classes like bg-app, bg-card, text-accent everywhere.
+      // Guarded with "if (window.tailwind)" so a slow/blocked network
+      // (offline, ad-blocker, restrictive proxy) can't throw an uncaught
+      // error here and break the rest of the page's scripts.
+      if (window.tailwind) {
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                app: '#0f172a', // page background
+                card: '#1e293b', // card background
+                accent: '#6366f1', // indigo accent color
+              },
+            },
+          },
+        }
+      } else {
+        console.warn('InvestMe: Tailwind CDN did not load - the app will be unstyled. Check your internet connection.')
+      }
+    </script>
+  </head>
+  <body class="bg-app text-slate-100 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
