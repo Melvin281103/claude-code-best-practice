@@ -8,8 +8,17 @@ import { useClaudeAPI } from '../hooks/useClaudeAPI'
 import TradeForm from '../components/TradeForm.jsx'
 import Disclaimer from '../components/Disclaimer.jsx'
 import { formatCurrency, formatPercent, formatDate } from '../utils/formatters'
+import { getInvestorProfile } from '../utils/calculations'
 
 const CLASS_COLORS = { ETF: '#6366f1', Action: '#22c55e', Crypto: '#f59e0b' }
+
+// Maps a Journal asset class to the matching key in the Profil module's
+// recommended allocation object ({ etf, actions, crypto }).
+const ASSET_CLASS_TO_ALLOCATION_KEY = { ETF: 'etf', Action: 'actions', Crypto: 'crypto' }
+
+// How many percentage points off-target counts as "worth flagging".
+// Below this, small drifts from rounding/market moves are just noise.
+const DEVIATION_THRESHOLD = 10
 
 const INSIGHTS_SYSTEM_PROMPT = `Tu es un coach pédagogique pour un investisseur débutant long terme.
 On te donne l'historique de ses trades au format JSON (achats/ventes, raisons, émotions).
@@ -26,6 +35,8 @@ export default function Journal() {
   const [trades, setTrades] = useLocalStorage('investme_trades', [])
   // Manual "current value" per asset name, since there's no live price API.
   const [currentValues, setCurrentValues] = useLocalStorage('investme_current_values', {})
+  // Read-only: the profile + recommended allocation set up in Module 1.
+  const [profile] = useLocalStorage('investme_profile', null)
   const [showForm, setShowForm] = useState(false)
   const [insights, setInsights] = useState(null)
   const { askClaude, loading, error } = useClaudeAPI()
@@ -47,6 +58,20 @@ export default function Journal() {
     }
     return Object.entries(byClass).map(([name, value]) => ({ name, value }))
   }, [positions, currentValues])
+
+  // Recompute automatically whenever trades/values change (e.g. right
+  // after logging a new purchase) - compares the real portfolio split
+  // against what Module 1 recommended for this profile.
+  const allocationCheck = useMemo(() => {
+    if (!profile || totalCurrentValue <= 0) return null
+    const recommended = getInvestorProfile(profile.crashScore, profile.years).allocation
+    return Object.entries(ASSET_CLASS_TO_ALLOCATION_KEY).map(([assetClass, key]) => {
+      const actualValue = breakdownData.find((b) => b.name === assetClass)?.value ?? 0
+      const actualPercent = (actualValue / totalCurrentValue) * 100
+      const recommendedPercent = recommended[key]
+      return { assetClass, actualPercent, recommendedPercent, diff: actualPercent - recommendedPercent }
+    })
+  }, [profile, breakdownData, totalCurrentValue])
 
   function addTrade(trade) {
     setTrades([trade, ...trades])
@@ -124,6 +149,9 @@ export default function Journal() {
           </div>
         )}
       </div>
+
+      {/* --- Recommendation: real allocation vs. profile target --- */}
+      {allocationCheck && <AllocationCheckCard deviations={allocationCheck} />}
 
       {/* --- Manual "current value" editor per position --- */}
       {positions.length > 0 && (
@@ -221,6 +249,46 @@ function Stat({ label, value, valueClass = 'text-white' }) {
     <div>
       <p className="text-slate-400">{label}</p>
       <p className={`text-lg font-semibold ${valueClass}`}>{value}</p>
+    </div>
+  )
+}
+
+// Compares the real portfolio split (from logged trades) to the target
+// allocation from Module 1, and flags any asset class that has drifted
+// more than DEVIATION_THRESHOLD points away from its target.
+function AllocationCheckCard({ deviations }) {
+  const flagged = deviations.filter((d) => Math.abs(d.diff) > DEVIATION_THRESHOLD)
+  const isAligned = flagged.length === 0
+
+  return (
+    <div className={`mt-4 rounded-xl border p-4 ${isAligned ? 'border-green-500/30 bg-card' : 'border-amber-500/40 bg-card'}`}>
+      <p className="font-medium text-white">
+        {isAligned ? '✅ Répartition alignée avec ton profil' : '⚠️ Ta répartition s\'écarte de ton profil'}
+      </p>
+
+      <div className="mt-3 space-y-2 text-sm">
+        {deviations.map((d) => (
+          <div key={d.assetClass} className="flex justify-between">
+            <span className="text-slate-400">{d.assetClass}</span>
+            <span className={Math.abs(d.diff) > DEVIATION_THRESHOLD ? 'font-medium text-amber-400' : 'text-slate-200'}>
+              {formatPercent(d.actualPercent / 100, 0)} (cible {formatPercent(d.recommendedPercent / 100, 0)})
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {!isAligned && (
+        <p className="mt-3 text-xs text-slate-400">
+          {flagged
+            .map((d) =>
+              d.diff > 0
+                ? `Ta poche ${d.assetClass} est sur-représentée de ${Math.round(d.diff)} points.`
+                : `Ta poche ${d.assetClass} est sous-représentée de ${Math.round(-d.diff)} points.`
+            )
+            .join(' ')}{' '}
+          Ceci est informatif, pas une consigne d'achat ou de vente.
+        </p>
+      )}
     </div>
   )
 }
