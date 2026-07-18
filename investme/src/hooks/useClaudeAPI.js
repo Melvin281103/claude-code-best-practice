@@ -56,7 +56,18 @@ export function useClaudeAPI() {
       })
 
       if (!response.ok) {
-        throw new Error(`Claude API a répondu avec le statut ${response.status}`)
+        // Anthropic sends back a JSON body describing exactly what went
+        // wrong (e.g. "Your credit balance is too low..."). Surface that
+        // real message instead of just the HTTP status number, since the
+        // status alone isn't enough to know what to fix.
+        let detail = `statut ${response.status}`
+        try {
+          const errorBody = await response.json()
+          if (errorBody?.error?.message) detail = errorBody.error.message
+        } catch {
+          // Response body wasn't JSON - stick with the status code above.
+        }
+        throw new Error(`Claude API : ${detail}`)
       }
 
       const data = await response.json()
