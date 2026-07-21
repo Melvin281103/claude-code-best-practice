@@ -105,6 +105,37 @@
         outline-offset: 2px;
         border-radius: 2px;
       }
+
+      /* Printing the app's dark theme as-is would waste ink and be hard
+         to read on paper, so the "Exporter / imprimer" button on Profil
+         gets a light, paper-friendly version instead: white background,
+         dark ink text, and a thin border in place of card backgrounds. */
+      @media print {
+        body {
+          background: #ffffff !important;
+          color: #10201a !important;
+        }
+        .bg-app,
+        .bg-card {
+          background: #ffffff !important;
+        }
+        .rounded-xl,
+        .rounded-lg {
+          border: 1px solid #d8d3c8 !important;
+        }
+        .text-papier,
+        .text-papier\/80,
+        .text-papier\/90 {
+          color: #10201a !important;
+        }
+        .text-brume,
+        .text-brume\/70 {
+          color: #5c6e62 !important;
+        }
+        .print\:hidden {
+          display: none !important;
+        }
+      }
     </style>
   </head>
   <body class="bg-app font-sans text-papier antialiased">
