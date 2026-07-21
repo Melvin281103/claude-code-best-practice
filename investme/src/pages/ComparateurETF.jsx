@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react'
 import ETFCard from '../components/ETFCard.jsx'
 import HypotheticalProjection from '../components/HypotheticalProjection.jsx'
 import { useLiveCryptoPrices } from '../hooks/useLiveCryptoPrices.js'
+import { useLocalStorage } from '../hooks/useLocalStorage'
 import { ETFS, LAST_UPDATED } from '../data/etfs'
 import { ACTIONS, ACTIONS_LAST_UPDATED } from '../data/actions'
 import { CRYPTOS, CRYPTOS_LAST_UPDATED } from '../data/cryptos'
@@ -41,13 +42,30 @@ export default function ComparateurETF() {
   const [courtierFilter, setCourtierFilter] = useState(null)
   const [compareMode, setCompareMode] = useState(false)
   const [selectedIsins, setSelectedIsins] = useState([])
+  const [showWatchlistOnly, setShowWatchlistOnly] = useState(false)
   const liveCrypto = useLiveCryptoPrices()
+
+  // Single source of truth for the watchlist, shared across all 3 tabs.
+  // Entries look like { type: 'etf'|'action'|'crypto', id: <isin/ticker> }
+  // so items from different asset classes never collide.
+  const [watchlist, setWatchlist] = useLocalStorage('investme_watchlist', [])
+
+  function isWatched(type, id) {
+    return watchlist.some((w) => w.type === type && w.id === id)
+  }
+
+  function toggleWatchlist(type, id) {
+    setWatchlist(
+      isWatched(type, id) ? watchlist.filter((w) => !(w.type === type && w.id === id)) : [...watchlist, { type, id }]
+    )
+  }
 
   const visibleEtfs = useMemo(() => {
     let list = ETFS.filter((etf) => {
       if (peaOnly && !etf.pea_eligible) return false
       if (capitalisantOnly && etf.type !== 'Capitalisant') return false
       if (courtierFilter && !etf.courtiers.includes(courtierFilter)) return false
+      if (showWatchlistOnly && !isWatched('etf', etf.isin)) return false
       return true
     })
 
@@ -57,7 +75,7 @@ export default function ComparateurETF() {
     })
 
     return list
-  }, [peaOnly, capitalisantOnly, courtierFilter, sortBy])
+  }, [peaOnly, capitalisantOnly, courtierFilter, sortBy, showWatchlistOnly, watchlist])
 
   const selectedEtfs = ETFS.filter((etf) => selectedIsins.includes(etf.isin))
 
@@ -71,18 +89,28 @@ export default function ComparateurETF() {
 
   return (
     <div className="px-4 py-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold text-white">Comparateur</h1>
-        {activeTab === 'etf' && (
+        <div className="flex gap-2">
           <button
-            onClick={() => setCompareMode(!compareMode)}
+            onClick={() => setShowWatchlistOnly(!showWatchlistOnly)}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-              compareMode ? 'bg-accent text-white' : 'border border-slate-700 text-slate-300'
+              showWatchlistOnly ? 'bg-accent text-white' : 'border border-slate-700 text-slate-300'
             }`}
           >
-            {compareMode ? 'Quitter comparaison' : 'Comparer'}
+            ⭐ Watchlist ({watchlist.length})
           </button>
-        )}
+          {activeTab === 'etf' && (
+            <button
+              onClick={() => setCompareMode(!compareMode)}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                compareMode ? 'bg-accent text-white' : 'border border-slate-700 text-slate-300'
+              }`}
+            >
+              {compareMode ? 'Quitter comparaison' : 'Comparer'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* --- Tab switcher: ETF / Actions / Crypto --- */}
@@ -154,6 +182,8 @@ export default function ComparateurETF() {
                 compareMode={compareMode}
                 selected={selectedIsins.includes(etf.isin)}
                 onToggleSelect={toggleSelect}
+                isWatched={isWatched('etf', etf.isin)}
+                onToggleWatchlist={() => toggleWatchlist('etf', etf.isin)}
               />
             ))}
             {visibleEtfs.length === 0 && (
@@ -167,12 +197,14 @@ export default function ComparateurETF() {
 
       {activeTab === 'actions' && (
         <SimpleAssetTab
-          assets={ACTIONS}
+          assets={showWatchlistOnly ? ACTIONS.filter((a) => isWatched('action', a.ticker)) : ACTIONS}
           lastUpdated={ACTIONS_LAST_UPDATED}
-          emptyLabel="Aucune action dans la base."
+          emptyLabel={showWatchlistOnly ? 'Aucune action dans ta watchlist.' : 'Aucune action dans la base.'}
           getTag={(a) => a.secteur}
           getExtra={(a) => ({ label: 'Dividende', value: formatPercent(a.dividende_yield, 1) })}
           getBadge={(a) => (a.pea_eligible ? { label: 'PEA', tone: 'green' } : { label: 'CTO', tone: 'grey' })}
+          getIsWatched={(a) => isWatched('action', a.ticker)}
+          getOnToggleWatchlist={(a) => () => toggleWatchlist('action', a.ticker)}
         />
       )}
 
@@ -180,13 +212,15 @@ export default function ComparateurETF() {
         <>
           <LivePricesHeader live={liveCrypto} />
           <SimpleAssetTab
-            assets={CRYPTOS}
+            assets={showWatchlistOnly ? CRYPTOS.filter((a) => isWatched('crypto', a.ticker)) : CRYPTOS}
             lastUpdated={CRYPTOS_LAST_UPDATED}
-            emptyLabel="Aucune crypto dans la base."
+            emptyLabel={showWatchlistOnly ? 'Aucune crypto dans ta watchlist.' : 'Aucune crypto dans la base.'}
             getTag={(a) => a.categorie}
             getExtra={(a) => ({ label: 'Volatilité', value: a.volatilite })}
             getBadge={() => null}
             getLivePrice={(a) => liveCrypto.prices[a.coingeckoId]}
+            getIsWatched={(a) => isWatched('crypto', a.ticker)}
+            getOnToggleWatchlist={(a) => () => toggleWatchlist('crypto', a.ticker)}
           />
         </>
       )}
@@ -197,7 +231,7 @@ export default function ComparateurETF() {
 // Shared list view for the Actions and Crypto tabs: sortable by
 // performance, one lightweight card per asset. Simpler than the ETF tab
 // on purpose (no watchlist/compare/AI) to keep this addition contained.
-function SimpleAssetTab({ assets, lastUpdated, emptyLabel, getTag, getExtra, getBadge, getLivePrice }) {
+function SimpleAssetTab({ assets, lastUpdated, emptyLabel, getTag, getExtra, getBadge, getLivePrice, getIsWatched, getOnToggleWatchlist }) {
   const [sortBy, setSortBy] = useState('perf_1y')
 
   const sorted = useMemo(() => [...assets].sort((a, b) => b[sortBy] - a[sortBy]), [assets, sortBy])
@@ -222,6 +256,8 @@ function SimpleAssetTab({ assets, lastUpdated, emptyLabel, getTag, getExtra, get
             extra={getExtra(asset)}
             badge={getBadge(asset)}
             livePrice={getLivePrice ? getLivePrice(asset) : null}
+            isWatched={getIsWatched(asset)}
+            onToggleWatchlist={getOnToggleWatchlist(asset)}
           />
         ))}
         {sorted.length === 0 && <p className="py-8 text-center text-sm text-slate-500">{emptyLabel}</p>}
@@ -252,7 +288,7 @@ function LivePricesHeader({ live }) {
   )
 }
 
-function SimpleAssetCard({ asset, tag, extra, badge, livePrice }) {
+function SimpleAssetCard({ asset, tag, extra, badge, livePrice, isWatched, onToggleWatchlist }) {
   const [showProjection, setShowProjection] = useState(false)
   const badgeTone = badge?.tone === 'green' ? 'bg-green-500/20 text-green-400' : 'bg-slate-600/40 text-slate-300'
 
@@ -265,7 +301,16 @@ function SimpleAssetCard({ asset, tag, extra, badge, livePrice }) {
             {asset.ticker} · {tag}
           </p>
         </div>
-        {badge && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeTone}`}>{badge.label}</span>}
+        <div className="flex shrink-0 items-center gap-2">
+          {badge && <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeTone}`}>{badge.label}</span>}
+          <button
+            onClick={onToggleWatchlist}
+            className="text-lg leading-none"
+            aria-label={isWatched ? 'Retirer de la watchlist' : 'Ajouter à la watchlist'}
+          >
+            {isWatched ? '⭐' : '☆'}
+          </button>
+        </div>
       </div>
 
       {livePrice && (
