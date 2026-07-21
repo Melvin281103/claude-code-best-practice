@@ -16,7 +16,7 @@ const TABS = [
 export default function BottomNav() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-20 flex border-t border-brume/15 bg-card"
+      className="fixed bottom-0 left-0 right-0 z-20 flex border-t border-brume/15 bg-card print:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       {TABS.map((tab) => (
