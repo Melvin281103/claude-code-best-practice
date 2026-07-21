@@ -149,3 +149,86 @@ export function computeNextDca(plans, log, today) {
 function round(value) {
   return Math.round(value * 100) / 100
 }
+
+// Module 4 helper: pure local statistics over the emotion tagged on each
+// trade - no API call, so this stays useful even when Claude API credits
+// are unavailable. Only raises a flag once there are enough trades of
+// that type for the ratio to mean something rather than be noise.
+const MIN_TRADES_FOR_FLAG = 3
+
+export function analyzeTradingBehavior(trades) {
+  const emotionCounts = { peur: 0, neutre: 0, confiant: 0, euphorique: 0 }
+  let sellsTotal = 0
+  let sellsUnderFear = 0
+  let buysTotal = 0
+  let buysUnderEuphoria = 0
+
+  for (const t of trades) {
+    if (emotionCounts[t.emotion] !== undefined) emotionCounts[t.emotion]++
+    if (t.type === 'Vente') {
+      sellsTotal++
+      if (t.emotion === 'peur') sellsUnderFear++
+    } else {
+      buysTotal++
+      if (t.emotion === 'euphorique') buysUnderEuphoria++
+    }
+  }
+
+  const flags = []
+  if (sellsTotal >= MIN_TRADES_FOR_FLAG && sellsUnderFear / sellsTotal >= 0.5) {
+    flags.push(
+      `${Math.round((sellsUnderFear / sellsTotal) * 100)} % de tes ventes ont été faites sous l'émotion "Peur" - vendre dans la panique verrouille souvent une perte qui aurait pu se résorber.`
+    )
+  }
+  if (buysTotal >= MIN_TRADES_FOR_FLAG && buysUnderEuphoria / buysTotal >= 0.5) {
+    flags.push(
+      `${Math.round((buysUnderEuphoria / buysTotal) * 100)} % de tes achats ont été faits sous l'émotion "Euphorique" - acheter dans l'euphorie revient souvent à acheter après une forte hausse.`
+    )
+  }
+
+  return { emotionCounts, sellsTotal, sellsUnderFear, buysTotal, buysUnderEuphoria, flags }
+}
+
+// Module 4 helper: XIRR (time-weighted internal rate of return) from raw
+// trade cash flows plus the portfolio's current value "today". Unlike
+// the simple P&L%, this accounts for WHEN money went in - investing
+// 1000€ then getting +10% next week is a much higher annualized return
+// than the same +10% over 5 years, and XIRR captures that difference.
+// Solved numerically (Newton's method) since there's no closed-form
+// formula for irregular cash flows.
+function xnpv(rate, cashFlows) {
+  const t0 = cashFlows[0].date
+  return cashFlows.reduce((sum, cf) => {
+    const years = (cf.date - t0) / (1000 * 60 * 60 * 24 * 365)
+    return sum + cf.amount / Math.pow(1 + rate, years)
+  }, 0)
+}
+
+export function calculateXIRR(trades, currentValue, asOfDate = new Date()) {
+  if (trades.length === 0 || currentValue <= 0) return null
+
+  // Achats = money leaving your pocket (negative), Ventes = money coming
+  // back (positive), and the current portfolio value counts as one final
+  // positive cash flow "as of today" (as if you sold everything now).
+  const cashFlows = trades
+    .map((t) => ({
+      date: new Date(t.date),
+      amount: t.type === 'Achat' ? -t.totalAmount : t.totalAmount,
+    }))
+    .concat({ date: asOfDate, amount: currentValue })
+    .sort((a, b) => a.date - b.date)
+
+  // Newton's method: start at a reasonable guess and refine. Falls back
+  // to null if it doesn't converge (e.g. pathological cash flow shapes)
+  // rather than showing a nonsense number.
+  let rate = 0.1
+  for (let i = 0; i < 100; i++) {
+    const npv = xnpv(rate, cashFlows)
+    const derivative = (xnpv(rate + 1e-5, cashFlows) - npv) / 1e-5
+    if (Math.abs(derivative) < 1e-10) return null
+    const nextRate = rate - npv / derivative
+    if (Math.abs(nextRate - rate) < 1e-6) return nextRate
+    rate = nextRate
+  }
+  return null
+}
