@@ -39,22 +39,20 @@ export default function DailyTipCard({ profile }) {
   }
 
   return (
-    <div className="rounded-xl border border-app/8 bg-creme p-4">
-      <p className="mb-2 text-xs uppercase tracking-wide text-ardoise">📅 Conseil du jour</p>
+    <div className="topo-texture rounded-xl bg-card p-4">
+      <p className="mb-2 text-sm text-brume">📅 Conseil du jour</p>
 
-      <span className="inline-block rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-mousse">
+      <span className="inline-block rounded-full bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
         {freeTip.category}
       </span>
-      {/* Italic Fraunces, like a hand-noted trail marker rather than a
-          plain sentence - the "Carte de jour" direction's treatment. */}
-      <p className="mt-2 font-display text-[15px] italic leading-snug text-app">{freeTip.text}</p>
+      <p className="mt-2 text-sm text-papier/90">{freeTip.text}</p>
 
-      <div className="mt-3 border-t border-app/10 pt-3">
+      <div className="mt-3 border-t border-brume/15 pt-3">
         {!cachedAiTip && (
           <button
             onClick={fetchAiTip}
             disabled={loading}
-            className="w-full rounded-lg border border-accent py-2 text-sm font-medium text-mousse disabled:opacity-40"
+            className="w-full rounded-lg border border-accent py-2 text-sm font-medium text-accent disabled:opacity-40"
           >
             {loading ? 'Analyse en cours...' : '✨ Recommandation IA personnalisée du jour'}
           </button>
@@ -64,11 +62,11 @@ export default function DailyTipCard({ profile }) {
 
         {cachedAiTip && (
           <div className="text-sm">
-            <span className="inline-block rounded-full bg-glacier/15 px-2 py-0.5 text-xs font-medium text-glacier">
+            <span className="inline-block rounded-full bg-glacier/20 px-2 py-0.5 text-xs font-medium text-glacier">
               {cachedAiTip.categorie}
             </span>
-            <p className="mt-2 font-display italic text-app">{cachedAiTip.recommandation}</p>
-            <p className="mt-2 text-xs italic text-ardoise">{cachedAiTip.disclaimer}</p>
+            <p className="mt-2 text-papier/90">{cachedAiTip.recommandation}</p>
+            <p className="mt-2 text-xs italic text-brume">{cachedAiTip.disclaimer}</p>
           </div>
         )}
       </div>
