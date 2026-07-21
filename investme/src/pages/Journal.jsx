@@ -5,10 +5,10 @@ import { useMemo, useState } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useClaudeAPI } from '../hooks/useClaudeAPI'
-import TradeForm from '../components/TradeForm.jsx'
+import TradeForm, { EMOTIONS } from '../components/TradeForm.jsx'
 import Disclaimer from '../components/Disclaimer.jsx'
 import { formatCurrency, formatPercent, formatDate } from '../utils/formatters'
-import { getInvestorProfile, buildPositions } from '../utils/calculations'
+import { getInvestorProfile, buildPositions, analyzeTradingBehavior, calculateXIRR } from '../utils/calculations'
 
 const CLASS_COLORS = { ETF: '#6366f1', Action: '#22c55e', Crypto: '#f59e0b' }
 
@@ -49,6 +49,10 @@ export default function Journal() {
   )
   const totalPnl = totalCurrentValue - totalInvested
   const totalPnlPercent = totalInvested > 0 ? totalPnl / totalInvested : 0
+  // Unlike totalPnlPercent (a flat "in vs out" ratio), XIRR weighs each
+  // trade by WHEN it happened, so it reflects the actual pace of your
+  // returns rather than just the total invested/gained amounts.
+  const xirr = useMemo(() => calculateXIRR(trades, totalCurrentValue), [trades, totalCurrentValue])
 
   const breakdownData = useMemo(() => {
     const byClass = {}
@@ -72,6 +76,8 @@ export default function Journal() {
       return { assetClass, actualPercent, recommendedPercent, diff: actualPercent - recommendedPercent }
     })
   }, [profile, breakdownData, totalCurrentValue])
+
+  const behavior = useMemo(() => analyzeTradingBehavior(trades), [trades])
 
   function addTrade(trade) {
     setTrades([trade, ...trades])
@@ -131,6 +137,13 @@ export default function Journal() {
             value={`${formatCurrency(totalPnl)} (${formatPercent(totalPnlPercent)})`}
             valueClass={totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}
           />
+          {xirr !== null && (
+            <Stat
+              label="Rendement annualisé (TRI)"
+              value={formatPercent(xirr)}
+              valueClass={xirr >= 0 ? 'text-green-400' : 'text-red-400'}
+            />
+          )}
         </div>
 
         {breakdownData.length > 0 && (
@@ -176,6 +189,9 @@ export default function Journal() {
           </div>
         </div>
       )}
+
+      {/* --- Local behavior analysis (no API, always available) --- */}
+      {trades.length > 0 && <BehaviorInsights behavior={behavior} />}
 
       {/* --- AI insights --- */}
       <div className="mt-4 rounded-xl bg-card p-4">
@@ -276,6 +292,43 @@ function AllocationCheckCard({ deviations }) {
           Ceci est informatif, pas une consigne d'achat ou de vente.
         </p>
       )}
+    </div>
+  )
+}
+
+// Pure local statistics on the emotions logged with each trade - no API
+// call, so this stays useful even while Claude API credits are unavailable.
+function BehaviorInsights({ behavior }) {
+  const { emotionCounts, flags } = behavior
+  const total = Object.values(emotionCounts).reduce((sum, n) => sum + n, 0)
+  if (total === 0) return null
+
+  return (
+    <div className="mt-4 rounded-xl bg-card p-4">
+      <p className="font-medium text-white">📊 Analyse locale de tes émotions (sans IA)</p>
+
+      <div className="mt-3 flex flex-wrap gap-4 text-sm">
+        {EMOTIONS.map((e) => (
+          <div key={e.value} className="flex items-center gap-1.5 text-slate-300">
+            <span className="text-lg leading-none">{e.emoji}</span>
+            <span>{emotionCounts[e.value]}</span>
+          </div>
+        ))}
+      </div>
+
+      {flags.length > 0 ? (
+        <ul className="mt-3 space-y-1.5 text-sm text-amber-400">
+          {flags.map((flag, i) => (
+            <li key={i}>⚠️ {flag}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm text-slate-500">Rien de particulier à signaler pour l'instant.</p>
+      )}
+
+      <p className="mt-3 text-xs italic text-slate-500">
+        Calculé localement à partir de ton journal, sans appel IA - informatif, pas un conseil.
+      </p>
     </div>
   )
 }
