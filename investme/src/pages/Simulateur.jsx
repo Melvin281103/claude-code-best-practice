@@ -13,11 +13,13 @@ import {
 } from 'recharts'
 import Disclaimer from '../components/Disclaimer.jsx'
 import ScenarioCard from '../components/ScenarioCard.jsx'
+import { useLocalStorage } from '../hooks/useLocalStorage'
 import {
   simulateGrowth,
   weightedAnnualReturn,
   monthlyIncomeFromWithdrawalRule,
   annualizedRateFromCumulative,
+  getInvestorProfile,
   HYPOTHETICAL_RATES,
 } from '../utils/calculations'
 import { formatCurrency, formatPercent } from '../utils/formatters'
@@ -39,10 +41,17 @@ const ASSET_OPTIONS = {
 }
 
 export default function Simulateur() {
+  // Read-only: pre-fills the sliders below from the profile set up in
+  // Module 1, so the user doesn't have to re-type what they already told
+  // the app (monthly capacity, horizon, recommended allocation). Nothing
+  // here writes back to the profile - the sliders stay freely editable.
+  const [profile] = useLocalStorage('investme_profile', null)
+  const recommendedAllocation = profile ? getInvestorProfile(profile.crashScore, profile.years).allocation : null
+
   const [startAmount, setStartAmount] = useState(500)
-  const [monthlyContribution, setMonthlyContribution] = useState(150)
-  const [years, setYears] = useState(10)
-  const [allocation, setAllocation] = useState({ etf: 70, actions: 20, crypto: 10 })
+  const [monthlyContribution, setMonthlyContribution] = useState(profile?.monthly ?? 150)
+  const [years, setYears] = useState(profile?.years ?? 10)
+  const [allocation, setAllocation] = useState(recommendedAllocation ?? { etf: 70, actions: 20, crypto: 10 })
   // "" for a category means "use the generic historical average" - pick a
   // specific ETF/action/crypto isin/ticker to test that asset instead.
   const [assetChoice, setAssetChoice] = useState({ etf: '', actions: '', crypto: '' })
@@ -104,6 +113,12 @@ export default function Simulateur() {
   return (
     <div className="px-4 py-6">
       <h1 className="mb-4 text-2xl font-bold text-white">Simulateur</h1>
+
+      {profile && (
+        <p className="mb-4 text-xs text-brume">
+          Versement, durée et répartition pré-remplis depuis ton profil - modifie-les librement ci-dessous.
+        </p>
+      )}
 
       <div className="space-y-5 rounded-xl bg-card p-4">
         <SliderInput
