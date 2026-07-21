@@ -20,7 +20,7 @@ function collectBackupData() {
   return data
 }
 
-export default function DataBackup({ light = false }) {
+export default function DataBackup() {
   const [importError, setImportError] = useState(null)
   const [importedOk, setImportedOk] = useState(false)
 
@@ -65,15 +65,10 @@ export default function DataBackup({ light = false }) {
     event.target.value = '' // allow re-selecting the same file later
   }
 
-  const titleClass = light ? 'text-app' : 'text-papier'
-  const bodyClass = light ? 'text-ardoise' : 'text-brume'
-  const importBorderClass = light ? 'border-app/15 text-ardoise' : 'border-brume/30 text-brume'
-  const positiveClass = light ? 'text-mousse' : 'text-sentier'
-
   return (
-    <div className={`rounded-xl p-4 ${light ? 'border border-app/8 bg-creme' : 'topo-texture bg-card'}`}>
-      <p className={`text-sm font-medium ${titleClass}`}>💾 Sauvegarde de tes données</p>
-      <p className={`mt-1 text-xs ${bodyClass}`}>
+    <div className="topo-texture rounded-xl bg-card p-4">
+      <p className="text-sm font-medium text-papier">💾 Sauvegarde de tes données</p>
+      <p className="mt-1 text-xs text-brume">
         Tout est stocké uniquement dans ce navigateur. Exporte régulièrement un fichier de secours pour ne rien
         perdre si tu changes d'appareil ou vides ton cache.
       </p>
@@ -82,14 +77,14 @@ export default function DataBackup({ light = false }) {
         <button onClick={handleExport} className="flex-1 rounded-lg border border-accent py-2 text-sm font-medium text-accent">
           Exporter mes données
         </button>
-        <label className={`flex-1 cursor-pointer rounded-lg border py-2 text-center text-sm font-medium ${importBorderClass}`}>
+        <label className="flex-1 cursor-pointer rounded-lg border border-brume/30 py-2 text-center text-sm font-medium text-brume">
           Importer
           <input type="file" accept="application/json" onChange={handleImport} className="hidden" />
         </label>
       </div>
 
       {importError && <p className="mt-2 text-xs text-grenat">{importError}</p>}
-      {importedOk && <p className={`mt-2 text-xs ${positiveClass}`}>Import réussi, rechargement en cours...</p>}
+      {importedOk && <p className="mt-2 text-xs text-sentier">Import réussi, rechargement en cours...</p>}
     </div>
   )
 }
