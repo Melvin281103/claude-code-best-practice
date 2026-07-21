@@ -5,10 +5,12 @@
 // the same "what can I invest in, and what has it returned" idea.
 import { useMemo, useState } from 'react'
 import ETFCard from '../components/ETFCard.jsx'
+import HypotheticalProjection from '../components/HypotheticalProjection.jsx'
 import { ETFS, LAST_UPDATED } from '../data/etfs'
 import { ACTIONS, ACTIONS_LAST_UPDATED } from '../data/actions'
 import { CRYPTOS, CRYPTOS_LAST_UPDATED } from '../data/cryptos'
 import { formatPercent, formatDate } from '../utils/formatters'
+import { annualizedRateFromCumulative } from '../utils/calculations'
 
 const SORT_OPTIONS = [
   { value: 'ter', label: 'TER' },
@@ -218,6 +220,7 @@ function SimpleAssetTab({ assets, lastUpdated, emptyLabel, getTag, getExtra, get
 }
 
 function SimpleAssetCard({ asset, tag, extra, badge }) {
+  const [showProjection, setShowProjection] = useState(false)
   const badgeTone = badge?.tone === 'green' ? 'bg-green-500/20 text-green-400' : 'bg-slate-600/40 text-slate-300'
 
   return (
@@ -250,6 +253,14 @@ function SimpleAssetCard({ asset, tag, extra, badge }) {
           ))}
         </div>
       </div>
+
+      <button
+        onClick={() => setShowProjection(!showProjection)}
+        className="mt-3 w-full rounded-lg border border-slate-700 py-1.5 text-xs font-medium text-slate-300"
+      >
+        {showProjection ? 'Masquer la projection hypothétique' : '📈 Voir la projection hypothétique'}
+      </button>
+      {showProjection && <HypotheticalProjection annualReturn={annualizedRateFromCumulative(asset.perf_5y, 5)} />}
     </div>
   )
 }
