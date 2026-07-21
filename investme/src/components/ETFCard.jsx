@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useClaudeAPI } from '../hooks/useClaudeAPI'
 import HypotheticalProjection from './HypotheticalProjection.jsx'
+import GlossaryTerm from './GlossaryTerm.jsx'
 import { formatPercent } from '../utils/formatters'
 import { annualizedRateFromCumulative } from '../utils/calculations'
 
@@ -53,7 +54,7 @@ export default function ETFCard({ etf, compareMode, selected, onToggleSelect, is
                 etf.pea_eligible ? 'bg-green-500/20 text-green-400' : 'bg-slate-600/40 text-slate-300'
               }`}
             >
-              {etf.pea_eligible ? 'PEA' : 'CTO'}
+              <GlossaryTerm term={etf.pea_eligible ? 'PEA' : 'CTO'} />
             </span>
             <button
               onClick={(e) => {
@@ -69,9 +70,15 @@ export default function ETFCard({ etf, compareMode, selected, onToggleSelect, is
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          <Badge label={`TER ${formatPercent(etf.ter, 2)}`} />
-          <Badge label={etf.replication} />
-          <Badge label={etf.type} />
+          <Badge
+            label={
+              <>
+                <GlossaryTerm term="TER" /> {formatPercent(etf.ter, 2)}
+              </>
+            }
+          />
+          <Badge label={<GlossaryTerm term={etf.replication} />} />
+          <Badge label={<GlossaryTerm term={etf.type} />} />
         </div>
 
         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
