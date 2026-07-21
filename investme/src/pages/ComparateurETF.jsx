@@ -6,10 +6,11 @@
 import { useMemo, useState } from 'react'
 import ETFCard from '../components/ETFCard.jsx'
 import HypotheticalProjection from '../components/HypotheticalProjection.jsx'
+import { useLiveCryptoPrices } from '../hooks/useLiveCryptoPrices.js'
 import { ETFS, LAST_UPDATED } from '../data/etfs'
 import { ACTIONS, ACTIONS_LAST_UPDATED } from '../data/actions'
 import { CRYPTOS, CRYPTOS_LAST_UPDATED } from '../data/cryptos'
-import { formatPercent, formatDate } from '../utils/formatters'
+import { formatPercent, formatDate, formatCurrencyPrecise } from '../utils/formatters'
 import { annualizedRateFromCumulative } from '../utils/calculations'
 
 const SORT_OPTIONS = [
@@ -40,6 +41,7 @@ export default function ComparateurETF() {
   const [courtierFilter, setCourtierFilter] = useState(null)
   const [compareMode, setCompareMode] = useState(false)
   const [selectedIsins, setSelectedIsins] = useState([])
+  const liveCrypto = useLiveCryptoPrices()
 
   const visibleEtfs = useMemo(() => {
     let list = ETFS.filter((etf) => {
@@ -175,14 +177,18 @@ export default function ComparateurETF() {
       )}
 
       {activeTab === 'crypto' && (
-        <SimpleAssetTab
-          assets={CRYPTOS}
-          lastUpdated={CRYPTOS_LAST_UPDATED}
-          emptyLabel="Aucune crypto dans la base."
-          getTag={(a) => a.categorie}
-          getExtra={(a) => ({ label: 'Volatilité', value: a.volatilite })}
-          getBadge={() => null}
-        />
+        <>
+          <LivePricesHeader live={liveCrypto} />
+          <SimpleAssetTab
+            assets={CRYPTOS}
+            lastUpdated={CRYPTOS_LAST_UPDATED}
+            emptyLabel="Aucune crypto dans la base."
+            getTag={(a) => a.categorie}
+            getExtra={(a) => ({ label: 'Volatilité', value: a.volatilite })}
+            getBadge={() => null}
+            getLivePrice={(a) => liveCrypto.prices[a.coingeckoId]}
+          />
+        </>
       )}
     </div>
   )
@@ -191,7 +197,7 @@ export default function ComparateurETF() {
 // Shared list view for the Actions and Crypto tabs: sortable by
 // performance, one lightweight card per asset. Simpler than the ETF tab
 // on purpose (no watchlist/compare/AI) to keep this addition contained.
-function SimpleAssetTab({ assets, lastUpdated, emptyLabel, getTag, getExtra, getBadge }) {
+function SimpleAssetTab({ assets, lastUpdated, emptyLabel, getTag, getExtra, getBadge, getLivePrice }) {
   const [sortBy, setSortBy] = useState('perf_1y')
 
   const sorted = useMemo(() => [...assets].sort((a, b) => b[sortBy] - a[sortBy]), [assets, sortBy])
@@ -209,17 +215,44 @@ function SimpleAssetTab({ assets, lastUpdated, emptyLabel, getTag, getExtra, get
 
       <div className="mt-4 flex flex-col gap-3">
         {sorted.map((asset) => (
-          <SimpleAssetCard key={asset.ticker} asset={asset} tag={getTag(asset)} extra={getExtra(asset)} badge={getBadge(asset)} />
+          <SimpleAssetCard
+            key={asset.ticker}
+            asset={asset}
+            tag={getTag(asset)}
+            extra={getExtra(asset)}
+            badge={getBadge(asset)}
+            livePrice={getLivePrice ? getLivePrice(asset) : null}
+          />
         ))}
         {sorted.length === 0 && <p className="py-8 text-center text-sm text-slate-500">{emptyLabel}</p>}
       </div>
 
-      <p className="mt-4 text-center text-xs text-slate-600">Données mises à jour le {formatDate(lastUpdated)}</p>
+      <p className="mt-4 text-center text-xs text-slate-600">Données historiques mises à jour le {formatDate(lastUpdated)}</p>
     </div>
   )
 }
 
-function SimpleAssetCard({ asset, tag, extra, badge }) {
+// Header shown above the Crypto tab: last-refresh time + a manual
+// "Actualiser" button, since the automatic refresh only happens every
+// hour and the user might not want to wait.
+function LivePricesHeader({ live }) {
+  return (
+    <div className="mb-4 flex items-center justify-between rounded-xl bg-card px-4 py-3 text-xs">
+      <span className="text-slate-400">
+        {live.error
+          ? live.error
+          : live.lastUpdated
+            ? `Prix en direct actualisés à ${live.lastUpdated.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} (auto toutes les heures)`
+            : 'Chargement des prix en direct...'}
+      </span>
+      <button onClick={live.refetch} disabled={live.loading} className="shrink-0 text-accent disabled:opacity-40">
+        {live.loading ? '...' : 'Actualiser'}
+      </button>
+    </div>
+  )
+}
+
+function SimpleAssetCard({ asset, tag, extra, badge, livePrice }) {
   const [showProjection, setShowProjection] = useState(false)
   const badgeTone = badge?.tone === 'green' ? 'bg-green-500/20 text-green-400' : 'bg-slate-600/40 text-slate-300'
 
@@ -234,6 +267,18 @@ function SimpleAssetCard({ asset, tag, extra, badge }) {
         </div>
         {badge && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeTone}`}>{badge.label}</span>}
       </div>
+
+      {livePrice && (
+        <div className="mt-2 flex items-baseline gap-2">
+          <span className="text-lg font-semibold text-white">{formatCurrencyPrecise(livePrice.eur)}</span>
+          {typeof livePrice.eur_24h_change === 'number' && (
+            <span className={livePrice.eur_24h_change >= 0 ? 'text-sm text-green-400' : 'text-sm text-red-400'}>
+              {livePrice.eur_24h_change >= 0 ? '+' : ''}
+              {livePrice.eur_24h_change.toFixed(1)} % (24h)
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
         <PerfCell label="1 an" value={asset.perf_1y} />
