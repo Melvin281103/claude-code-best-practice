@@ -10,9 +10,11 @@ import { getInvestorProfile } from '../utils/calculations'
 import DailyTipCard from '../components/DailyTipCard.jsx'
 import DataBackup from '../components/DataBackup.jsx'
 import DashboardSummary from '../components/DashboardSummary.jsx'
+import RiskBadge from '../components/RiskBadge.jsx'
 
-// Colors for the 3 slices of the allocation donut chart.
-const SLICE_COLORS = { etf: '#6366f1', actions: '#22c55e', crypto: '#f59e0b' }
+// Colors for the 3 slices of the allocation donut chart - Sentier/Glacier/Ambre,
+// the same 3 accents used across the whole app (never Grenat, reserved for losses).
+const SLICE_COLORS = { etf: '#4C9A6A', actions: '#3E7CA6', crypto: '#D99A3E' }
 
 const CRASH_CHOICES = [
   { label: 'Je panique et je vends', score: 1 },
@@ -96,7 +98,7 @@ function Onboarding({ step, setStep, answers, setAnswers, onFinish }) {
       {/* Progress dots so the user knows how many questions are left */}
       <div className="mb-6 flex gap-1.5">
         {Array.from({ length: totalSteps }).map((_, i) => (
-          <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-accent' : 'bg-slate-700'}`} />
+          <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-accent' : 'bg-brume/20'}`} />
         ))}
       </div>
 
@@ -110,17 +112,15 @@ function Onboarding({ step, setStep, answers, setAnswers, onFinish }) {
               value={answers.savings}
               onChange={(e) => setAnswers({ ...answers, savings: e.target.value })}
               placeholder="0"
-              className="w-full rounded-lg border border-slate-700 bg-card px-4 py-3 text-lg text-white"
+              className="w-full rounded-lg border border-brume/30 bg-card px-4 py-3 font-display text-lg tabular-nums text-papier"
             />
-            <p className="mt-2 text-sm text-slate-400">
-              Idéalement 3-6 mois de dépenses. Ne touche pas à ça.
-            </p>
+            <p className="mt-2 text-sm text-brume">Idéalement 3-6 mois de dépenses. Ne touche pas à ça.</p>
           </Question>
         )}
 
         {step === 1 && (
           <Question title="Tu peux investir combien par mois ?">
-            <p className="mb-4 text-center text-3xl font-bold text-accent">{answers.monthly} €</p>
+            <p className="mb-4 text-center font-display text-3xl font-semibold tabular-nums text-accent">{answers.monthly} €</p>
             <input
               type="range"
               min="50"
@@ -130,7 +130,7 @@ function Onboarding({ step, setStep, answers, setAnswers, onFinish }) {
               onChange={(e) => setAnswers({ ...answers, monthly: Number(e.target.value) })}
               className="w-full accent-accent"
             />
-            <div className="mt-1 flex justify-between text-xs text-slate-500">
+            <div className="mt-1 flex justify-between text-xs text-brume">
               <span>50 €</span>
               <span>2000 €</span>
             </div>
@@ -171,7 +171,7 @@ function Onboarding({ step, setStep, answers, setAnswers, onFinish }) {
 
         {step === 4 && (
           <Question title="Dans combien d'années tu pourrais avoir besoin de cet argent ?">
-            <p className="mb-4 text-center text-3xl font-bold text-accent">{answers.years} ans</p>
+            <p className="mb-4 text-center font-display text-3xl font-semibold tabular-nums text-accent">{answers.years} ans</p>
             <input
               type="range"
               min="1"
@@ -180,7 +180,7 @@ function Onboarding({ step, setStep, answers, setAnswers, onFinish }) {
               onChange={(e) => setAnswers({ ...answers, years: Number(e.target.value) })}
               className="w-full accent-accent"
             />
-            <div className="mt-1 flex justify-between text-xs text-slate-500">
+            <div className="mt-1 flex justify-between text-xs text-brume">
               <span>1 an</span>
               <span>30 ans</span>
             </div>
@@ -190,17 +190,14 @@ function Onboarding({ step, setStep, answers, setAnswers, onFinish }) {
 
       <div className="mt-6 flex gap-3">
         {step > 0 && (
-          <button
-            onClick={() => setStep(step - 1)}
-            className="rounded-lg border border-slate-700 px-4 py-3 text-slate-300"
-          >
+          <button onClick={() => setStep(step - 1)} className="rounded-lg border border-brume/30 px-4 py-3 text-brume">
             Retour
           </button>
         )}
         <button
           onClick={next}
           disabled={!canGoNext}
-          className="flex-1 rounded-lg bg-accent py-3 font-medium text-white disabled:opacity-40"
+          className="flex-1 rounded-lg bg-accent py-3 font-medium text-papier disabled:opacity-40"
         >
           {step === totalSteps - 1 ? 'Voir mon profil' : 'Suivant'}
         </button>
@@ -212,7 +209,7 @@ function Onboarding({ step, setStep, answers, setAnswers, onFinish }) {
 function Question({ title, children }) {
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold text-white">{title}</h1>
+      <h1 className="mb-6 font-display text-xl font-semibold text-papier">{title}</h1>
       {children}
     </div>
   )
@@ -223,7 +220,7 @@ function ChoiceButton({ selected, onClick, children }) {
     <button
       onClick={onClick}
       className={`rounded-lg border px-4 py-3 text-left ${
-        selected ? 'border-accent bg-accent/10 text-white' : 'border-slate-700 text-slate-300'
+        selected ? 'border-accent bg-accent/10 text-papier' : 'border-brume/30 text-brume'
       }`}
     >
       {children}
@@ -247,55 +244,68 @@ function ProfileResult({ profile, onReset }) {
 
   return (
     <div className="px-4 py-6">
-      <p className="text-sm text-slate-400">Ton profil</p>
-      <h1 className="mb-4 text-2xl font-bold text-white">Investisseur {result.name}</h1>
+      <p className="text-sm text-brume">Ton profil</p>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="font-display text-2xl font-semibold text-papier">Investisseur {result.name}</h1>
+        <RiskBadge profileName={result.name} size="lg" />
+      </div>
 
       <DashboardSummary />
 
-      <div className="rounded-xl bg-card p-4">
-        <p className="mb-2 text-center text-sm text-slate-400">Répartition recommandée</p>
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={chartData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2}>
-                {chartData.map((entry) => (
-                  <Cell key={entry.key} fill={SLICE_COLORS[entry.key]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => `${value} %`} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      {/* The trail: each card below is a waypoint, connected by a dashed
+          line - recommended next steps laid out like a path, not a list. */}
+      <TrailPath>
+        <Waypoint>
+          <div className="topo-texture rounded-xl bg-card p-4">
+            <p className="mb-2 text-center text-sm text-brume">Répartition recommandée</p>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2}>
+                    {chartData.map((entry) => (
+                      <Cell key={entry.key} fill={SLICE_COLORS[entry.key]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => `${value} %`} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </Waypoint>
 
-      <div className="mt-4">
-        <DailyTipCard profile={profile} />
-      </div>
+        <Waypoint>
+          <DailyTipCard profile={profile} />
+        </Waypoint>
 
-      <div className="mt-6 flex flex-col gap-3">
-        <a
-          href="https://traderepublic.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg bg-card p-4 text-left"
-        >
-          <p className="font-medium text-white">Ouvre un PEA chez Trade Republic</p>
-          <p className="mt-1 text-sm text-slate-400">Un compte simple pour débuter sur les ETF et actions →</p>
-        </a>
+        <Waypoint>
+          <a
+            href="https://traderepublic.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="topo-texture block rounded-lg bg-card p-4 text-left"
+          >
+            <p className="font-medium text-papier">Ouvre un PEA chez Trade Republic</p>
+            <p className="mt-1 text-sm text-brume">Un compte simple pour débuter sur les ETF et actions →</p>
+          </a>
+        </Waypoint>
 
-        <button onClick={() => setShowLepInfo(true)} className="rounded-lg bg-card p-4 text-left">
-          <p className="font-medium text-white">Garde ton LEP plein en priorité</p>
-          <p className="mt-1 text-sm text-slate-400">Pourquoi c'est important avant d'investir →</p>
-        </button>
+        <Waypoint>
+          <button onClick={() => setShowLepInfo(true)} className="topo-texture w-full rounded-lg bg-card p-4 text-left">
+            <p className="font-medium text-papier">Garde ton LEP plein en priorité</p>
+            <p className="mt-1 text-sm text-brume">Pourquoi c'est important avant d'investir →</p>
+          </button>
+        </Waypoint>
 
-        <button onClick={() => navigate('/comparateur')} className="rounded-lg bg-card p-4 text-left">
-          <p className="font-medium text-white">Commence par 1 ETF World</p>
-          <p className="mt-1 text-sm text-slate-400">Compare les ETF disponibles →</p>
-        </button>
-      </div>
+        <Waypoint>
+          <button onClick={() => navigate('/comparateur')} className="topo-texture w-full rounded-lg bg-card p-4 text-left">
+            <p className="font-medium text-papier">Commence par 1 ETF World</p>
+            <p className="mt-1 text-sm text-brume">Compare les ETF disponibles →</p>
+          </button>
+        </Waypoint>
+      </TrailPath>
 
-      <button onClick={onReset} className="mt-6 w-full rounded-lg border border-slate-700 py-3 text-slate-300">
+      <button onClick={onReset} className="mt-6 w-full rounded-lg border border-brume/30 py-3 text-brume">
         Modifier mon profil
       </button>
 
@@ -306,8 +316,8 @@ function ProfileResult({ profile, onReset }) {
       {showLepInfo && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={() => setShowLepInfo(false)}>
           <div className="w-full max-w-md rounded-t-xl bg-card p-5" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-2 text-lg font-semibold text-white">Le LEP, c'est quoi ?</h2>
-            <p className="text-sm text-slate-300">
+            <h2 className="mb-2 font-display text-lg font-semibold text-papier">Le LEP, c'est quoi ?</h2>
+            <p className="text-sm text-papier/80">
               Le Livret d'Épargne Populaire est un livret réglementé au taux avantageux, réservé
               aux revenus modestes. Avant de placer de l'argent sur les marchés, il est
               généralement recommandé de d'abord remplir son épargne de précaution (livrets
@@ -315,13 +325,29 @@ function ProfileResult({ profile, onReset }) {
             </p>
             <button
               onClick={() => setShowLepInfo(false)}
-              className="mt-4 w-full rounded-lg bg-accent py-2 font-medium text-white"
+              className="mt-4 w-full rounded-lg bg-accent py-2 font-medium text-papier"
             >
               Compris
             </button>
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// Groups the recommendation cards into a "trail": a dashed vertical line
+// with a small waypoint dot marking each stop, reinforcing the app's
+// "long-term investing is a path, not a sprint" visual identity.
+function TrailPath({ children }) {
+  return <div className="space-y-4 border-l-2 border-dashed border-brume/25 pl-5">{children}</div>
+}
+
+function Waypoint({ children }) {
+  return (
+    <div className="relative">
+      <span className="absolute -left-[1.65rem] top-4 h-2.5 w-2.5 rounded-full bg-accent ring-4 ring-app" />
+      {children}
     </div>
   )
 }
