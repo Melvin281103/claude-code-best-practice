@@ -83,6 +83,26 @@ Jamais de conseil d'achat/vente explicite. Tout est présenté comme
 `Disclaimer.jsx` sur Simulateur/Journal/DCA). Les projections par actif
 précis sont des extrapolations du passé, jamais des prédictions.
 
+## Limites connues (architecture délibérément simple)
+
+Ces choix sont adaptés à un usage **personnel mono-utilisateur** — à
+revoir si la finalité change un jour (partage, déploiement public,
+multi-appareils) :
+
+- **Pas de sauvegarde automatique** — tout vit dans le `localStorage` de
+  ce navigateur précis. Vider le cache, changer de navigateur ou de
+  machine efface tout sans avertissement. `DataBackup.jsx` (export/import
+  JSON) est la seule protection, mais c'est une action manuelle.
+- **Tailwind via CDN, pas de build** — pratique pour un projet perso,
+  mais pas de purge du CSS inutilisé et dépendance à un script externe
+  qui doit se charger à chaque visite (sans lui, l'app s'affiche sans
+  style).
+- **Clé API exposée côté navigateur** — `VITE_ANTHROPIC_KEY` est visible
+  dans les requêtes réseau du navigateur (inspectable via DevTools).
+  Acceptable en usage strictement personnel local ; ne jamais déployer
+  tel quel sur un site public sans passer par un vrai backend qui garde
+  la clé secrète.
+
 ## Problème connu (non résolu côté app)
 
 Le compte Anthropic Console de l'utilisateur n'arrive pas à ajouter de
