@@ -189,6 +189,20 @@ export function analyzeTradingBehavior(trades) {
   return { emotionCounts, sellsTotal, sellsUnderFear, buysTotal, buysUnderEuphoria, flags }
 }
 
+// Module 4 helper: flags when a single real position dominates the
+// portfolio - "60% in one crypto" is a concentration risk regardless of
+// which asset it is, and this needs no AI call or market data to compute.
+const CONCENTRATION_THRESHOLD = 0.4
+
+export function concentrationScore(positionValues) {
+  const total = positionValues.reduce((sum, p) => sum + p.value, 0)
+  if (total <= 0 || positionValues.length === 0) return null
+
+  const largest = positionValues.reduce((max, p) => (p.value > max.value ? p : max))
+  const percent = largest.value / total
+  return { name: largest.name, percent, flagged: percent >= CONCENTRATION_THRESHOLD }
+}
+
 // Module 4 helper: XIRR (time-weighted internal rate of return) from raw
 // trade cash flows plus the portfolio's current value "today". Unlike
 // the simple P&L%, this accounts for WHEN money went in - investing
