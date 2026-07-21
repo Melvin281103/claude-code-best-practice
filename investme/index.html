@@ -66,8 +66,15 @@
                 glacier: '#3E7CA6', // "Équilibré" badge, secondary accent
                 grenat: '#8C3B4A', // "Dynamique" badge, losses/danger
                 ambre: '#D99A3E', // waypoints, deadlines, warnings
-                papier: '#F2EDE3', // warm off-white - primary text
-                brume: '#8FA396', // muted secondary text
+                papier: '#F2EDE3', // warm off-white - primary text (dark mode) / page surface (light "Carte de jour" mode)
+                brume: '#8FA396', // muted secondary text (dark mode only - too low-contrast on light backgrounds)
+                // "Carte de jour" (daylight) variant, used only on the Profil
+                // result screen: 'app' doubles as ink text, 'papier' as the
+                // page surface, plus these 3 additions for sub-cards and
+                // WCAG-readable accents on a light background.
+                creme: '#FFFDF8', // sub-card surface on the light variant
+                mousse: '#3E7A54', // darker green - readable positive/accent text on light bg
+                ardoise: '#5C6E62', // darker muted text - readable on light bg (brume is too pale there)
               },
               fontFamily: {
                 display: ['Fraunces', 'Georgia', 'serif'],
