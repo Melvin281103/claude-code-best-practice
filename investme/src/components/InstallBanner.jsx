@@ -55,7 +55,7 @@ export default function InstallBanner() {
   }
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-30 mx-3 rounded-lg border border-accent/40 bg-card px-4 py-3 shadow-lg">
+    <div className="fixed bottom-16 left-0 right-0 z-30 mx-3 rounded-lg border border-accent/40 bg-card px-4 py-3 shadow-lg print:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="text-sm">
           <p className="font-semibold text-slate-100">Installer InvestMe</p>
