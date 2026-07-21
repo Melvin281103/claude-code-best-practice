@@ -34,8 +34,13 @@ const DEFAULT_ANSWERS = {
   years: 10,
 }
 
+// Max number of past profiles to keep - old enough entries just aren't
+// useful anymore, and this keeps localStorage bounded.
+const MAX_PROFILE_HISTORY = 10
+
 export default function Profil() {
   const [profile, setProfile] = useLocalStorage('investme_profile', null)
+  const [history, setHistory] = useLocalStorage('investme_profile_history', [])
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState(DEFAULT_ANSWERS)
 
@@ -56,7 +61,12 @@ export default function Profil() {
   return (
     <ProfileResult
       profile={profile}
+      history={history}
       onReset={() => {
+        // Snapshot the outgoing profile before it's replaced, so its
+        // recommended allocation and answers aren't lost forever - just
+        // no longer the active one.
+        setHistory([{ ...profile, replacedAt: new Date().toISOString() }, ...history].slice(0, MAX_PROFILE_HISTORY))
         setAnswers(DEFAULT_ANSWERS)
         setStep(0)
         setProfile(null)
@@ -233,7 +243,7 @@ function ChoiceButton({ selected, onClick, children }) {
 // ---------------------------------------------------------------------
 // Result screen: shown once the profile is saved.
 // ---------------------------------------------------------------------
-function ProfileResult({ profile, onReset }) {
+function ProfileResult({ profile, history, onReset }) {
   const navigate = useNavigate()
   const [showLepInfo, setShowLepInfo] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
@@ -330,6 +340,8 @@ function ProfileResult({ profile, onReset }) {
         <DataBackup />
       </div>
 
+      {history.length > 0 && <ProfileHistory history={history} />}
+
       {showResetConfirm && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={() => setShowResetConfirm(false)}>
           <div className="w-full max-w-md rounded-t-xl bg-card p-5" onClick={(e) => e.stopPropagation()}>
@@ -370,6 +382,44 @@ function ProfileResult({ profile, onReset }) {
               Compris
             </button>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Collapsible list of past profiles, snapshotted right before each reset,
+// so redoing the questionnaire doesn't erase how the recommendation
+// evolved over time - useful context next time you wonder "wait, wasn't
+// I Prudent before?".
+function ProfileHistory({ history }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="print:hidden mt-4 rounded-xl bg-card p-4">
+      <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between text-left">
+        <p className="text-sm text-brume">Historique de mes profils ({history.length})</p>
+        <span className="text-brume">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2 text-sm">
+          {history.map((past, i) => {
+            const pastResult = getInvestorProfile(past.crashScore, past.years)
+            return (
+              <div key={i} className="flex items-center justify-between rounded-lg bg-app px-3 py-2">
+                <div>
+                  <p className="text-papier">{pastResult.name}</p>
+                  <p className="text-xs text-brume">
+                    {pastResult.allocation.etf}/{pastResult.allocation.actions}/{pastResult.allocation.crypto} % ·
+                    objectif : {past.goal}
+                  </p>
+                </div>
+                <span className="text-xs text-brume">
+                  jusqu'au {new Date(past.replacedAt).toLocaleDateString('fr-FR')}
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
