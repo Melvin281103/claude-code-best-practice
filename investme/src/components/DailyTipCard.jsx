@@ -52,7 +52,7 @@ export default function DailyTipCard({ profile }) {
           <button
             onClick={fetchAiTip}
             disabled={loading}
-            className="w-full rounded-lg border border-accent py-2 text-sm font-medium text-accent disabled:opacity-40"
+            className="print:hidden w-full rounded-lg border border-accent py-2 text-sm font-medium text-accent disabled:opacity-40"
           >
             {loading ? 'Analyse en cours...' : '✨ Recommandation IA personnalisée du jour'}
           </button>
