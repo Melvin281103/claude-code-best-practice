@@ -13,24 +13,57 @@ import {
 } from 'recharts'
 import Disclaimer from '../components/Disclaimer.jsx'
 import ScenarioCard from '../components/ScenarioCard.jsx'
-import { simulateGrowth, weightedAnnualReturn, monthlyIncomeFromWithdrawalRule } from '../utils/calculations'
+import {
+  simulateGrowth,
+  weightedAnnualReturn,
+  monthlyIncomeFromWithdrawalRule,
+  annualizedRateFromCumulative,
+  HYPOTHETICAL_RATES,
+} from '../utils/calculations'
 import { formatCurrency, formatPercent } from '../utils/formatters'
+import { ETFS } from '../data/etfs'
+import { ACTIONS } from '../data/actions'
+import { CRYPTOS } from '../data/cryptos'
 
 const SIMULATEUR_DISCLAIMER =
   "Ces projections sont basées sur des rendements hypothétiques historiques. Les performances passées ne garantissent pas les performances futures. Ce simulateur est informatif uniquement et ne constitue pas un conseil en investissement au sens de la réglementation AMF."
+
+// For each allocation category, the list of specific real assets the
+// user can plug in instead of the generic category average - each one
+// carries its own historical perf_5y, annualized the same way the
+// Comparateur's "projection hypothétique" does.
+const ASSET_OPTIONS = {
+  etf: ETFS.map((e) => ({ value: e.isin, label: `${e.name} (${e.ticker})`, perf_5y: e.perf_5y })),
+  actions: ACTIONS.map((a) => ({ value: a.ticker, label: `${a.name} (${a.ticker})`, perf_5y: a.perf_5y })),
+  crypto: CRYPTOS.map((c) => ({ value: c.ticker, label: `${c.name} (${c.ticker})`, perf_5y: c.perf_5y })),
+}
 
 export default function Simulateur() {
   const [startAmount, setStartAmount] = useState(500)
   const [monthlyContribution, setMonthlyContribution] = useState(150)
   const [years, setYears] = useState(10)
   const [allocation, setAllocation] = useState({ etf: 70, actions: 20, crypto: 10 })
+  // "" for a category means "use the generic historical average" - pick a
+  // specific ETF/action/crypto isin/ticker to test that asset instead.
+  const [assetChoice, setAssetChoice] = useState({ etf: '', actions: '', crypto: '' })
 
   const totalAllocation = allocation.etf + allocation.actions + allocation.crypto
   const allocationValid = totalAllocation === 100
 
+  // Swap in a specific asset's own annualized rate for any category
+  // where one was picked, falling back to the generic assumption.
+  const effectiveRates = useMemo(() => {
+    const rates = { ...HYPOTHETICAL_RATES }
+    for (const category of ['etf', 'actions', 'crypto']) {
+      const chosen = ASSET_OPTIONS[category].find((o) => o.value === assetChoice[category])
+      if (chosen) rates[category] = annualizedRateFromCumulative(chosen.perf_5y, 5)
+    }
+    return rates
+  }, [assetChoice])
+
   // Recompute the whole simulation only when an input actually changes.
   const scenarios = useMemo(() => {
-    const baseRate = weightedAnnualReturn(allocation)
+    const baseRate = weightedAnnualReturn(allocation, effectiveRates)
     const rates = {
       pessimiste: Math.max(baseRate - 0.03, 0),
       realiste: baseRate,
@@ -42,7 +75,7 @@ export default function Simulateur() {
       series[key] = simulateGrowth({ startAmount, monthlyContribution, years, annualRate: rate })
     }
     return { rates, series }
-  }, [startAmount, monthlyContribution, years, allocation])
+  }, [startAmount, monthlyContribution, years, allocation, effectiveRates])
 
   // Merge the 3 series into one array per year, the shape Recharts wants
   // for drawing 3 areas on the same chart: [{ year, pessimiste, realiste, optimiste }]
@@ -103,17 +136,42 @@ export default function Simulateur() {
 
         <div>
           <p className="mb-2 text-sm text-slate-400">Répartition</p>
+
           <AllocationSlider label="ETF" value={allocation.etf} onChange={(v) => setAllocation({ ...allocation, etf: v })} />
+          <AssetPicker
+            categoryLabel="ETF"
+            options={ASSET_OPTIONS.etf}
+            value={assetChoice.etf}
+            onChange={(v) => setAssetChoice({ ...assetChoice, etf: v })}
+            defaultRate={HYPOTHETICAL_RATES.etf}
+          />
+
           <AllocationSlider
             label="Actions"
             value={allocation.actions}
             onChange={(v) => setAllocation({ ...allocation, actions: v })}
           />
+          <AssetPicker
+            categoryLabel="Actions"
+            options={ASSET_OPTIONS.actions}
+            value={assetChoice.actions}
+            onChange={(v) => setAssetChoice({ ...assetChoice, actions: v })}
+            defaultRate={HYPOTHETICAL_RATES.actions}
+          />
+
           <AllocationSlider
             label="Crypto"
             value={allocation.crypto}
             onChange={(v) => setAllocation({ ...allocation, crypto: v })}
           />
+          <AssetPicker
+            categoryLabel="Crypto"
+            options={ASSET_OPTIONS.crypto}
+            value={assetChoice.crypto}
+            onChange={(v) => setAssetChoice({ ...assetChoice, crypto: v })}
+            defaultRate={HYPOTHETICAL_RATES.crypto}
+          />
+
           <p className={`mt-1 text-sm ${allocationValid ? 'text-slate-500' : 'text-red-400'}`}>
             Total : {totalAllocation} % {!allocationValid && '- doit faire 100 %'}
           </p>
@@ -175,6 +233,36 @@ function SliderInput({ label, value, onChange, min, max, step, format }) {
         onChange={(e) => onChange(Number(e.target.value))}
         className="mt-1 w-full accent-accent"
       />
+    </div>
+  )
+}
+
+// Lets the user swap a category's generic assumption (ex: "ETF: 8%/an")
+// for one specific real asset's own historical rate, so they can test
+// "what if it's actually CW8" instead of just the broad average.
+function AssetPicker({ categoryLabel, options, value, onChange, defaultRate }) {
+  const chosen = options.find((o) => o.value === value)
+  const rate = chosen ? annualizedRateFromCumulative(chosen.perf_5y, 5) : defaultRate
+
+  return (
+    <div className="mb-3">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg border border-slate-700 bg-app px-2 py-1.5 text-xs text-slate-400"
+      >
+        <option value="">{categoryLabel} - moyenne historique ({formatPercent(defaultRate)}/an)</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {chosen && (
+        <p className="mt-1 text-[11px] text-accent">
+          → {formatPercent(rate)}/an, basé sur la performance historique 5 ans de {chosen.label}
+        </p>
+      )}
     </div>
   )
 }
