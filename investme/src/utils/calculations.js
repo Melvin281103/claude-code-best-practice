@@ -47,6 +47,16 @@ export function simulateGrowth({ startAmount, monthlyContribution, years, annual
   return points
 }
 
+// Converts a cumulative multi-year return (e.g. perf_5y = 3.5, meaning
+// +350% over 5 years) into the equivalent constant annual rate (CAGR) -
+// the same "per year" shape simulateGrowth expects. Clamped so the base
+// (1 + rate) never goes to zero/negative, which would make the fractional
+// power below produce NaN.
+export function annualizedRateFromCumulative(cumulativeReturn, numberOfYears) {
+  const safeCumulative = Math.max(cumulativeReturn, -0.99)
+  return Math.pow(1 + safeCumulative, 1 / numberOfYears) - 1
+}
+
 // The "4% rule": a commonly cited rough estimate of how much you could
 // withdraw per year from a portfolio without depleting it too fast.
 // Divided by 12 here to show a monthly income figure.
