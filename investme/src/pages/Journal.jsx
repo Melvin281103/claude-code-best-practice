@@ -8,7 +8,7 @@ import { useClaudeAPI } from '../hooks/useClaudeAPI'
 import TradeForm from '../components/TradeForm.jsx'
 import Disclaimer from '../components/Disclaimer.jsx'
 import { formatCurrency, formatPercent, formatDate } from '../utils/formatters'
-import { getInvestorProfile } from '../utils/calculations'
+import { getInvestorProfile, buildPositions } from '../utils/calculations'
 
 const CLASS_COLORS = { ETF: '#6366f1', Action: '#22c55e', Crypto: '#f59e0b' }
 
@@ -229,19 +229,6 @@ export default function Journal() {
       </div>
     </div>
   )
-}
-
-// Groups raw trades into net positions per asset: how many units are
-// still held, and how much money went into that position (Achat - Vente).
-function buildPositions(trades) {
-  const byName = {}
-  for (const t of trades) {
-    if (!byName[t.name]) byName[t.name] = { name: t.name, assetClass: t.assetClass, quantity: 0, invested: 0 }
-    const sign = t.type === 'Achat' ? 1 : -1
-    byName[t.name].quantity += sign * t.quantity
-    byName[t.name].invested += sign * t.totalAmount
-  }
-  return Object.values(byName).filter((p) => p.quantity > 0)
 }
 
 function Stat({ label, value, valueClass = 'text-white' }) {
