@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useClaudeAPI } from '../hooks/useClaudeAPI'
+import GlossaryTerm from '../components/GlossaryTerm.jsx'
 import { averagePurchasePrice } from '../utils/calculations'
 import { formatCurrency, formatCurrencyPrecise } from '../utils/formatters'
 
@@ -59,7 +60,9 @@ export default function DCA() {
   return (
     <div className="px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Plan DCA</h1>
+        <h1 className="text-2xl font-bold text-white">
+          Plan <GlossaryTerm term="DCA" />
+        </h1>
         <button onClick={() => setShowSetup(!showSetup)} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white">
           {showSetup ? 'Fermer' : '+ Ajouter'}
         </button>
