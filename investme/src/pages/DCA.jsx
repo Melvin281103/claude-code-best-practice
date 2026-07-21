@@ -6,8 +6,8 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Respons
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useClaudeAPI } from '../hooks/useClaudeAPI'
 import GlossaryTerm from '../components/GlossaryTerm.jsx'
-import { averagePurchasePrice, currentMonthKey, daysUntilDay, computeNextDca } from '../utils/calculations'
-import { formatCurrency, formatCurrencyPrecise } from '../utils/formatters'
+import { averagePurchasePrice, currentMonthKey, daysUntilDay, computeNextDca, dcaDisciplineRate } from '../utils/calculations'
+import { formatCurrency, formatCurrencyPrecise, formatPercent } from '../utils/formatters'
 
 const COURTIERS = ['Trade Republic', 'XTB', 'Fortuneo', 'Revolut']
 
@@ -47,6 +47,7 @@ export default function DCA() {
   // Next scheduled DCA date across all plans (the plan not yet done this
   // month with the closest upcoming day, or next month's first plan).
   const nextDca = useMemo(() => computeNextDca(plans, log, today), [plans, log])
+  const discipline = useMemo(() => dcaDisciplineRate(plans, log, today), [plans, log])
 
   const totalTarget = plans.reduce((sum, p) => sum + Number(p.amount), 0)
   const totalDoneThisMonth = log.filter((l) => l.month === monthKey).reduce((sum, l) => sum + l.amount, 0)
@@ -77,6 +78,8 @@ export default function DCA() {
           </p>
         </div>
       )}
+
+      {discipline && <DisciplineCard discipline={discipline} />}
 
       {/* --- Market context on DCA day --- */}
       {todaysPlans.length > 0 && <MarketContextCard />}
@@ -165,6 +168,25 @@ function NotificationSettings() {
           Notifications bloquées - active-les dans les réglages de ton navigateur si tu changes d'avis.
         </p>
       )}
+    </div>
+  )
+}
+
+// Gamifies regularity: what fraction of expected versements over the
+// last few fully-completed months actually got marked done. Assumes
+// today's plans were active the whole period - a simplification since
+// plans don't record a creation date, but fine for a motivational gauge.
+function DisciplineCard({ discipline }) {
+  const percent = Math.round(discipline.rate * 100)
+  const tone = percent >= 80 ? 'text-green-400' : percent >= 50 ? 'text-amber-400' : 'text-red-400'
+
+  return (
+    <div className="mt-4 rounded-xl bg-card p-4 text-center">
+      <p className="text-sm text-slate-400">Discipline DCA (derniers {discipline.months} mois)</p>
+      <p className={`mt-1 text-2xl font-bold ${tone}`}>{formatPercent(discipline.rate, 0)}</p>
+      <p className="mt-1 text-xs text-slate-500">
+        {discipline.done} / {discipline.expected} versements honorés à temps
+      </p>
     </div>
   )
 }
