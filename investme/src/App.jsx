@@ -10,8 +10,13 @@ import Simulateur from './pages/Simulateur.jsx'
 import ComparateurETF from './pages/ComparateurETF.jsx'
 import Journal from './pages/Journal.jsx'
 import DCA from './pages/DCA.jsx'
+import { useDcaNotifications } from './hooks/useDcaNotifications.js'
 
 export default function App() {
+  // Runs once app-wide (not tied to the DCA tab) so the reminder fires
+  // no matter which page the user lands on when opening InvestMe.
+  useDcaNotifications()
+
   return (
     // mx-auto + max-w-md keeps the app centered and phone-width even on
     // a big desktop screen, matching the "mobile-first, scales up" spec.
