@@ -9,6 +9,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage'
 import { getInvestorProfile } from '../utils/calculations'
 import DailyTipCard from '../components/DailyTipCard.jsx'
 import DataBackup from '../components/DataBackup.jsx'
+import DashboardSummary from '../components/DashboardSummary.jsx'
 
 // Colors for the 3 slices of the allocation donut chart.
 const SLICE_COLORS = { etf: '#6366f1', actions: '#22c55e', crypto: '#f59e0b' }
@@ -248,6 +249,8 @@ function ProfileResult({ profile, onReset }) {
     <div className="px-4 py-6">
       <p className="text-sm text-slate-400">Ton profil</p>
       <h1 className="mb-4 text-2xl font-bold text-white">Investisseur {result.name}</h1>
+
+      <DashboardSummary />
 
       <div className="rounded-xl bg-card p-4">
         <p className="mb-2 text-center text-sm text-slate-400">Répartition recommandée</p>
