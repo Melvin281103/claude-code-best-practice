@@ -17,7 +17,7 @@ function findMatchedCrypto(name) {
   return CRYPTOS.find((c) => c.ticker.toLowerCase() === raw || c.name.toLowerCase() === raw || c.name.toLowerCase() === full)
 }
 
-const EMOTIONS = [
+export const EMOTIONS = [
   { value: 'peur', emoji: '😨', label: 'Peur' },
   { value: 'neutre', emoji: '😐', label: 'Neutre' },
   { value: 'confiant', emoji: '😊', label: 'Confiant' },
