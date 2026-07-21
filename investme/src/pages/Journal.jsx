@@ -8,7 +8,13 @@ import { useClaudeAPI } from '../hooks/useClaudeAPI'
 import TradeForm, { EMOTIONS } from '../components/TradeForm.jsx'
 import Disclaimer from '../components/Disclaimer.jsx'
 import { formatCurrency, formatPercent, formatDate } from '../utils/formatters'
-import { getInvestorProfile, buildPositions, analyzeTradingBehavior, calculateXIRR } from '../utils/calculations'
+import {
+  getInvestorProfile,
+  buildPositions,
+  analyzeTradingBehavior,
+  calculateXIRR,
+  concentrationScore,
+} from '../utils/calculations'
 
 const CLASS_COLORS = { ETF: '#6366f1', Action: '#22c55e', Crypto: '#f59e0b' }
 
@@ -78,6 +84,11 @@ export default function Journal() {
   }, [profile, breakdownData, totalCurrentValue])
 
   const behavior = useMemo(() => analyzeTradingBehavior(trades), [trades])
+
+  const concentration = useMemo(() => {
+    const positionValues = positions.map((p) => ({ name: p.name, value: currentValues[p.name] ?? p.invested }))
+    return concentrationScore(positionValues)
+  }, [positions, currentValues])
 
   function addTrade(trade) {
     setTrades([trade, ...trades])
@@ -162,6 +173,10 @@ export default function Journal() {
           </div>
         )}
       </div>
+
+      {/* --- Concentration flag: only worth nagging about once there's
+          more than one position to actually be concentrated relative to --- */}
+      {positions.length >= 2 && concentration?.flagged && <ConcentrationCard concentration={concentration} />}
 
       {/* --- Recommendation: real allocation vs. profile target --- */}
       {allocationCheck && <AllocationCheckCard deviations={allocationCheck} />}
@@ -328,6 +343,21 @@ function BehaviorInsights({ behavior }) {
 
       <p className="mt-3 text-xs italic text-slate-500">
         Calculé localement à partir de ton journal, sans appel IA - informatif, pas un conseil.
+      </p>
+    </div>
+  )
+}
+
+// Warns when one real position dominates the portfolio - a diversification
+// risk that exists regardless of which specific asset it is.
+function ConcentrationCard({ concentration }) {
+  return (
+    <div className="mt-4 rounded-xl border border-amber-500/40 bg-card p-4">
+      <p className="font-medium text-white">⚠️ Portefeuille concentré</p>
+      <p className="mt-1 text-sm text-slate-400">
+        <span className="text-papier">{concentration.name}</span> représente{' '}
+        <span className="font-medium text-amber-400">{formatPercent(concentration.percent, 0)}</span> de ton
+        portefeuille actuel. Une baisse sur cet actif seul aurait un impact disproportionné sur l'ensemble.
       </p>
     </div>
   )
