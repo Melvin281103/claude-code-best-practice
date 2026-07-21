@@ -6,7 +6,7 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Respons
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useClaudeAPI } from '../hooks/useClaudeAPI'
 import GlossaryTerm from '../components/GlossaryTerm.jsx'
-import { averagePurchasePrice } from '../utils/calculations'
+import { averagePurchasePrice, currentMonthKey, daysUntilDay, computeNextDca } from '../utils/calculations'
 import { formatCurrency, formatCurrencyPrecise } from '../utils/formatters'
 
 const COURTIERS = ['Trade Republic', 'XTB', 'Fortuneo', 'Revolut']
@@ -15,10 +15,6 @@ const MARKET_CONTEXT_SYSTEM_PROMPT = `Tu es un assistant qui rassure des investi
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, avec exactement cette clé :
 { "bullets": ["point 1", "point 2", "point 3"] }
 3 points courts sur le contexte de marché du jour, factuels et neutres. Ne dis JAMAIS de ne pas investir, ne donne aucun conseil d'achat ou de vente précis.`
-
-function currentMonthKey(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-}
 
 export default function DCA() {
   const [plans, setPlans] = useLocalStorage('investme_dca_plans', [])
@@ -347,26 +343,4 @@ function AveragePriceTable({ trades }) {
       </div>
     </div>
   )
-}
-
-// How many days until the next occurrence of "day" (1-28) in the current
-// or next month. Returns 0 if it's today.
-function daysUntilDay(day, today) {
-  const target = new Date(today.getFullYear(), today.getMonth(), day)
-  if (target < today) target.setMonth(target.getMonth() + 1)
-  const diffMs = target.setHours(0, 0, 0, 0) - new Date(today).setHours(0, 0, 0, 0)
-  return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)))
-}
-
-function computeNextDca(plans, log, today) {
-  const monthKey = currentMonthKey(today)
-  const pending = plans.filter((p) => !log.some((l) => l.planId === p.id && l.month === monthKey))
-  if (pending.length === 0) return null
-
-  let best = null
-  for (const plan of pending) {
-    const daysLeft = daysUntilDay(plan.day, today)
-    if (!best || daysLeft < best.daysLeft) best = { asset: plan.asset, daysLeft }
-  }
-  return best
 }
