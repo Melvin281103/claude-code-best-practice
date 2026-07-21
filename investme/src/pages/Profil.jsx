@@ -11,6 +11,7 @@ import DailyTipCard from '../components/DailyTipCard.jsx'
 import DataBackup from '../components/DataBackup.jsx'
 import DashboardSummary from '../components/DashboardSummary.jsx'
 import RiskBadge from '../components/RiskBadge.jsx'
+import AllocationCalculator from '../components/AllocationCalculator.jsx'
 
 // Colors for the 3 slices of the allocation donut chart - Sentier/Glacier/Ambre,
 // the same 3 accents used across the whole app (never Grenat, reserved for losses).
@@ -272,6 +273,10 @@ function ProfileResult({ profile, onReset }) {
               </ResponsiveContainer>
             </div>
           </div>
+        </Waypoint>
+
+        <Waypoint>
+          <AllocationCalculator allocation={result.allocation} defaultAmount={profile.monthly} />
         </Waypoint>
 
         <Waypoint>
