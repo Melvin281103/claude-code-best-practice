@@ -45,7 +45,7 @@ export default function AllocationCalculator({ allocation, defaultAmount }) {
         ))}
       </div>
 
-      <button onClick={() => navigate('/dca')} className="mt-3 text-xs text-accent underline">
+      <button onClick={() => navigate('/dca')} className="print:hidden mt-3 text-xs text-accent underline">
         Configurer ces montants dans mon plan DCA →
       </button>
     </div>
