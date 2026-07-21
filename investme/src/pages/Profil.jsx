@@ -8,6 +8,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { getInvestorProfile } from '../utils/calculations'
 import DailyTipCard from '../components/DailyTipCard.jsx'
+import DataBackup from '../components/DataBackup.jsx'
 
 // Colors for the 3 slices of the allocation donut chart.
 const SLICE_COLORS = { etf: '#6366f1', actions: '#22c55e', crypto: '#f59e0b' }
@@ -82,6 +83,15 @@ function Onboarding({ step, setStep, answers, setAnswers, onFinish }) {
 
   return (
     <div className="flex min-h-[80vh] flex-col px-4 py-6">
+      {/* Shown only on the first question, so someone reopening the app
+          after clearing their browser can restore instead of redoing
+          the whole quiz. */}
+      {step === 0 && (
+        <div className="mb-6">
+          <DataBackup />
+        </div>
+      )}
+
       {/* Progress dots so the user knows how many questions are left */}
       <div className="mb-6 flex gap-1.5">
         {Array.from({ length: totalSteps }).map((_, i) => (
@@ -285,6 +295,10 @@ function ProfileResult({ profile, onReset }) {
       <button onClick={onReset} className="mt-6 w-full rounded-lg border border-slate-700 py-3 text-slate-300">
         Modifier mon profil
       </button>
+
+      <div className="mt-4">
+        <DataBackup />
+      </div>
 
       {showLepInfo && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={() => setShowLepInfo(false)}>
