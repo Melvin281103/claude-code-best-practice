@@ -6,7 +6,9 @@
 import { useMemo, useState } from 'react'
 import ETFCard from '../components/ETFCard.jsx'
 import HypotheticalProjection from '../components/HypotheticalProjection.jsx'
+import GlossaryTerm from '../components/GlossaryTerm.jsx'
 import { useLiveCryptoPrices } from '../hooks/useLiveCryptoPrices.js'
+import { usePriceAlerts } from '../hooks/usePriceAlerts.js'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { ETFS, LAST_UPDATED } from '../data/etfs'
 import { ACTIONS, ACTIONS_LAST_UPDATED } from '../data/actions'
@@ -44,6 +46,7 @@ export default function ComparateurETF() {
   const [selectedIsins, setSelectedIsins] = useState([])
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false)
   const liveCrypto = useLiveCryptoPrices()
+  const priceAlerts = usePriceAlerts(liveCrypto.prices)
 
   // Single source of truth for the watchlist, shared across all 3 tabs.
   // Entries look like { type: 'etf'|'action'|'crypto', id: <isin/ticker> }
@@ -221,6 +224,9 @@ export default function ComparateurETF() {
             getLivePrice={(a) => liveCrypto.prices[a.coingeckoId]}
             getIsWatched={(a) => isWatched('crypto', a.ticker)}
             getOnToggleWatchlist={(a) => () => toggleWatchlist('crypto', a.ticker)}
+            getAlerts={(a) => priceAlerts.alerts.filter((alert) => alert.coingeckoId === a.coingeckoId)}
+            onAddAlert={(a) => (direction, targetPrice) => priceAlerts.addAlert(a.coingeckoId, a.name, direction, targetPrice)}
+            onRemoveAlert={priceAlerts.removeAlert}
           />
         </>
       )}
@@ -231,7 +237,20 @@ export default function ComparateurETF() {
 // Shared list view for the Actions and Crypto tabs: sortable by
 // performance, one lightweight card per asset. Simpler than the ETF tab
 // on purpose (no watchlist/compare/AI) to keep this addition contained.
-function SimpleAssetTab({ assets, lastUpdated, emptyLabel, getTag, getExtra, getBadge, getLivePrice, getIsWatched, getOnToggleWatchlist }) {
+function SimpleAssetTab({
+  assets,
+  lastUpdated,
+  emptyLabel,
+  getTag,
+  getExtra,
+  getBadge,
+  getLivePrice,
+  getIsWatched,
+  getOnToggleWatchlist,
+  getAlerts,
+  onAddAlert,
+  onRemoveAlert,
+}) {
   const [sortBy, setSortBy] = useState('perf_1y')
 
   const sorted = useMemo(() => [...assets].sort((a, b) => b[sortBy] - a[sortBy]), [assets, sortBy])
@@ -258,6 +277,9 @@ function SimpleAssetTab({ assets, lastUpdated, emptyLabel, getTag, getExtra, get
             livePrice={getLivePrice ? getLivePrice(asset) : null}
             isWatched={getIsWatched(asset)}
             onToggleWatchlist={getOnToggleWatchlist(asset)}
+            alerts={getAlerts ? getAlerts(asset) : undefined}
+            onAddAlert={getAlerts ? onAddAlert(asset) : undefined}
+            onRemoveAlert={onRemoveAlert}
           />
         ))}
         {sorted.length === 0 && <p className="py-8 text-center text-sm text-slate-500">{emptyLabel}</p>}
@@ -288,7 +310,7 @@ function LivePricesHeader({ live }) {
   )
 }
 
-function SimpleAssetCard({ asset, tag, extra, badge, livePrice, isWatched, onToggleWatchlist }) {
+function SimpleAssetCard({ asset, tag, extra, badge, livePrice, isWatched, onToggleWatchlist, alerts, onAddAlert, onRemoveAlert }) {
   const [showProjection, setShowProjection] = useState(false)
   const badgeTone = badge?.tone === 'green' ? 'bg-green-500/20 text-green-400' : 'bg-slate-600/40 text-slate-300'
 
@@ -302,7 +324,11 @@ function SimpleAssetCard({ asset, tag, extra, badge, livePrice, isWatched, onTog
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {badge && <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeTone}`}>{badge.label}</span>}
+          {badge && (
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeTone}`}>
+              <GlossaryTerm term={badge.label} />
+            </span>
+          )}
           <button
             onClick={onToggleWatchlist}
             className="text-lg leading-none"
@@ -333,7 +359,7 @@ function SimpleAssetCard({ asset, tag, extra, badge, livePrice, isWatched, onTog
 
       <div className="mt-3 flex items-center justify-between text-xs">
         <span className="text-slate-500">
-          {extra.label} : <span className="text-slate-300">{extra.value}</span>
+          <GlossaryTerm term={extra.label} /> : <span className="text-slate-300">{extra.value}</span>
         </span>
         <div className="flex flex-wrap gap-1.5">
           {asset.courtiers.map((courtier) => (
@@ -351,6 +377,67 @@ function SimpleAssetCard({ asset, tag, extra, badge, livePrice, isWatched, onTog
         {showProjection ? 'Masquer la projection hypothétique' : '📈 Voir la projection hypothétique'}
       </button>
       {showProjection && <HypotheticalProjection annualReturn={annualizedRateFromCumulative(asset.perf_5y, 5)} />}
+
+      {alerts && <PriceAlertSection alerts={alerts} onAddAlert={onAddAlert} onRemoveAlert={onRemoveAlert} />}
+    </div>
+  )
+}
+
+// Lets the user set a "notify me if this price goes above/below X€"
+// alert on a live-priced crypto card. Only rendered when the parent
+// passed live alert data (i.e. the Crypto tab).
+function PriceAlertSection({ alerts, onAddAlert, onRemoveAlert }) {
+  const [direction, setDirection] = useState('above')
+  const [targetPrice, setTargetPrice] = useState('')
+
+  function handleAdd() {
+    const value = Number(targetPrice)
+    if (!value || value <= 0) return
+    onAddAlert(direction, value)
+    setTargetPrice('')
+  }
+
+  return (
+    <div className="mt-3 border-t border-slate-700 pt-3">
+      <p className="text-xs font-medium text-slate-300">🔔 Alertes de prix</p>
+
+      {alerts.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {alerts.map((alert) => (
+            <div key={alert.id} className="flex items-center justify-between text-xs">
+              <span className={alert.triggered ? 'text-slate-500' : 'text-slate-300'}>
+                {alert.triggered ? '🔔 Déclenchée' : '⏳ Active'} -{' '}
+                {alert.direction === 'above' ? 'au-dessus de' : 'en dessous de'} {alert.targetPrice} €
+              </span>
+              <button onClick={() => onRemoveAlert(alert.id)} className="text-slate-600" aria-label="Supprimer l'alerte">
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-2 flex gap-2">
+        <select
+          value={direction}
+          onChange={(e) => setDirection(e.target.value)}
+          className="rounded-lg border border-slate-700 bg-app px-2 py-1 text-xs text-slate-300"
+        >
+          <option value="above">Au-dessus de</option>
+          <option value="below">En dessous de</option>
+        </select>
+        <input
+          type="number"
+          min="0"
+          value={targetPrice}
+          onChange={(e) => setTargetPrice(e.target.value)}
+          placeholder="Prix en €"
+          className="w-24 rounded-lg border border-slate-700 bg-app px-2 py-1 text-xs text-white"
+        />
+        <button onClick={handleAdd} className="rounded-lg bg-accent px-2 py-1 text-xs font-medium text-white">
+          Créer
+        </button>
+      </div>
     </div>
   )
 }
