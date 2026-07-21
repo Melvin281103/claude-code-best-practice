@@ -11,6 +11,8 @@ import DailyTipCard from '../components/DailyTipCard.jsx'
 import DataBackup from '../components/DataBackup.jsx'
 import DashboardSummary from '../components/DashboardSummary.jsx'
 import RiskBadge from '../components/RiskBadge.jsx'
+import MarketSnapshot from '../components/MarketSnapshot.jsx'
+import LatestJournalEntry from '../components/LatestJournalEntry.jsx'
 
 // Colors for the 3 slices of the allocation donut chart - Sentier/Glacier/Ambre,
 // the same 3 accents used across the whole app (never Grenat, reserved for losses).
@@ -243,10 +245,13 @@ function ProfileResult({ profile, onReset }) {
   ]
 
   return (
-    <div className="px-4 py-6">
-      <p className="text-sm text-brume">Ton profil</p>
+    // "Carte de jour" (daylight) variant: this is the only screen in the
+    // app that flips to a light surface - the bottom nav/footer stay dark
+    // since they're shared with the other 4 (still dark) tabs.
+    <div className="min-h-screen bg-papier px-4 py-6">
+      <p className="text-sm text-ardoise">Ton profil</p>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-semibold text-papier">Investisseur {result.name}</h1>
+        <h1 className="font-display text-2xl font-semibold text-app">Investisseur {result.name}</h1>
         <RiskBadge profileName={result.name} size="lg" />
       </div>
 
@@ -256,8 +261,8 @@ function ProfileResult({ profile, onReset }) {
           line - recommended next steps laid out like a path, not a list. */}
       <TrailPath>
         <Waypoint>
-          <div className="topo-texture rounded-xl bg-card p-4">
-            <p className="mb-2 text-center text-sm text-brume">Répartition recommandée</p>
+          <div className="rounded-xl border border-app/8 bg-creme p-4">
+            <p className="mb-2 text-center text-sm text-ardoise">Répartition recommandée</p>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -278,46 +283,56 @@ function ProfileResult({ profile, onReset }) {
           <DailyTipCard profile={profile} />
         </Waypoint>
 
+        {/* The 2 density additions from the "Instrument de rando"
+            direction, merged into this lighter card style. */}
+        <Waypoint>
+          <MarketSnapshot />
+        </Waypoint>
+
+        <Waypoint>
+          <LatestJournalEntry />
+        </Waypoint>
+
         <Waypoint>
           <a
             href="https://traderepublic.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="topo-texture block rounded-lg bg-card p-4 text-left"
+            className="block rounded-lg border border-app/8 bg-creme p-4 text-left"
           >
-            <p className="font-medium text-papier">Ouvre un PEA chez Trade Republic</p>
-            <p className="mt-1 text-sm text-brume">Un compte simple pour débuter sur les ETF et actions →</p>
+            <p className="font-medium text-app">Ouvre un PEA chez Trade Republic</p>
+            <p className="mt-1 text-sm text-ardoise">Un compte simple pour débuter sur les ETF et actions →</p>
           </a>
         </Waypoint>
 
         <Waypoint>
-          <button onClick={() => setShowLepInfo(true)} className="topo-texture w-full rounded-lg bg-card p-4 text-left">
-            <p className="font-medium text-papier">Garde ton LEP plein en priorité</p>
-            <p className="mt-1 text-sm text-brume">Pourquoi c'est important avant d'investir →</p>
+          <button onClick={() => setShowLepInfo(true)} className="w-full rounded-lg border border-app/8 bg-creme p-4 text-left">
+            <p className="font-medium text-app">Garde ton LEP plein en priorité</p>
+            <p className="mt-1 text-sm text-ardoise">Pourquoi c'est important avant d'investir →</p>
           </button>
         </Waypoint>
 
         <Waypoint>
-          <button onClick={() => navigate('/comparateur')} className="topo-texture w-full rounded-lg bg-card p-4 text-left">
-            <p className="font-medium text-papier">Commence par 1 ETF World</p>
-            <p className="mt-1 text-sm text-brume">Compare les ETF disponibles →</p>
+          <button onClick={() => navigate('/comparateur')} className="w-full rounded-lg border border-app/8 bg-creme p-4 text-left">
+            <p className="font-medium text-app">Commence par 1 ETF World</p>
+            <p className="mt-1 text-sm text-ardoise">Compare les ETF disponibles →</p>
           </button>
         </Waypoint>
       </TrailPath>
 
-      <button onClick={onReset} className="mt-6 w-full rounded-lg border border-brume/30 py-3 text-brume">
+      <button onClick={onReset} className="mt-6 w-full rounded-lg border border-app/15 py-3 text-ardoise">
         Modifier mon profil
       </button>
 
       <div className="mt-4">
-        <DataBackup />
+        <DataBackup light />
       </div>
 
       {showLepInfo && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={() => setShowLepInfo(false)}>
-          <div className="w-full max-w-md rounded-t-xl bg-card p-5" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-2 font-display text-lg font-semibold text-papier">Le LEP, c'est quoi ?</h2>
-            <p className="text-sm text-papier/80">
+          <div className="w-full max-w-md rounded-t-xl bg-creme p-5" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-2 font-display text-lg font-semibold text-app">Le LEP, c'est quoi ?</h2>
+            <p className="text-sm text-app/80">
               Le Livret d'Épargne Populaire est un livret réglementé au taux avantageux, réservé
               aux revenus modestes. Avant de placer de l'argent sur les marchés, il est
               généralement recommandé de d'abord remplir son épargne de précaution (livrets
@@ -340,13 +355,13 @@ function ProfileResult({ profile, onReset }) {
 // with a small waypoint dot marking each stop, reinforcing the app's
 // "long-term investing is a path, not a sprint" visual identity.
 function TrailPath({ children }) {
-  return <div className="space-y-4 border-l-2 border-dashed border-brume/25 pl-5">{children}</div>
+  return <div className="space-y-4 border-l-2 border-dashed border-app/15 pl-5">{children}</div>
 }
 
 function Waypoint({ children }) {
   return (
     <div className="relative">
-      <span className="absolute -left-[1.65rem] top-4 h-2.5 w-2.5 rounded-full bg-accent ring-4 ring-app" />
+      <span className="absolute -left-[1.65rem] top-4 h-2.5 w-2.5 rounded-full bg-accent ring-4 ring-papier" />
       {children}
     </div>
   )
