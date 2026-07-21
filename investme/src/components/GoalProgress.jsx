@@ -53,7 +53,7 @@ export default function GoalProgress({ goal }) {
           </div>
           <div className="mt-1 flex items-center justify-between">
             <p className="text-xs text-brume">{formatPercent(progress)} de l'objectif atteint</p>
-            <button onClick={() => setEditing(true)} className="text-xs text-accent">
+            <button onClick={() => setEditing(true)} className="print:hidden text-xs text-accent">
               Modifier
             </button>
           </div>
