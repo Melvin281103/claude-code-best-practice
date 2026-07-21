@@ -39,15 +39,15 @@ export default function DailyTipCard({ profile }) {
   }
 
   return (
-    <div className="rounded-xl bg-card p-4">
-      <p className="mb-2 text-sm text-slate-400">📅 Conseil du jour</p>
+    <div className="topo-texture rounded-xl bg-card p-4">
+      <p className="mb-2 text-sm text-brume">📅 Conseil du jour</p>
 
       <span className="inline-block rounded-full bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
         {freeTip.category}
       </span>
-      <p className="mt-2 text-sm text-slate-200">{freeTip.text}</p>
+      <p className="mt-2 text-sm text-papier/90">{freeTip.text}</p>
 
-      <div className="mt-3 border-t border-slate-700 pt-3">
+      <div className="mt-3 border-t border-brume/15 pt-3">
         {!cachedAiTip && (
           <button
             onClick={fetchAiTip}
@@ -58,15 +58,15 @@ export default function DailyTipCard({ profile }) {
           </button>
         )}
 
-        {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+        {error && <p className="mt-2 text-sm text-grenat">{error}</p>}
 
         {cachedAiTip && (
           <div className="text-sm">
-            <span className="inline-block rounded-full bg-green-500/20 px-2 py-0.5 text-xs font-medium text-green-400">
+            <span className="inline-block rounded-full bg-glacier/20 px-2 py-0.5 text-xs font-medium text-glacier">
               {cachedAiTip.categorie}
             </span>
-            <p className="mt-2 text-slate-200">{cachedAiTip.recommandation}</p>
-            <p className="mt-2 text-xs italic text-slate-500">{cachedAiTip.disclaimer}</p>
+            <p className="mt-2 text-papier/90">{cachedAiTip.recommandation}</p>
+            <p className="mt-2 text-xs italic text-brume">{cachedAiTip.disclaimer}</p>
           </div>
         )}
       </div>
