@@ -102,6 +102,50 @@ export function averagePurchasePrice(trades) {
   return totalQuantity > 0 ? totalCost / totalQuantity : 0
 }
 
+// Module 4 helper: groups raw trades into net positions per asset - how
+// many units are still held, and how much money went into that position
+// (Achat - Vente). Shared between the Journal and the Profil dashboard.
+export function buildPositions(trades) {
+  const byName = {}
+  for (const t of trades) {
+    if (!byName[t.name]) byName[t.name] = { name: t.name, assetClass: t.assetClass, quantity: 0, invested: 0 }
+    const sign = t.type === 'Achat' ? 1 : -1
+    byName[t.name].quantity += sign * t.quantity
+    byName[t.name].invested += sign * t.totalAmount
+  }
+  return Object.values(byName).filter((p) => p.quantity > 0)
+}
+
+// Module 5 helpers: shared between the DCA page and the Profil page's
+// dashboard summary, so "days until the next DCA" is computed identically
+// in both places instead of two copies drifting apart.
+export function currentMonthKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+// How many days until the next occurrence of "day" (1-28) in the current
+// or next month. Returns 0 if it's today.
+export function daysUntilDay(day, today) {
+  const target = new Date(today.getFullYear(), today.getMonth(), day)
+  if (target < today) target.setMonth(target.getMonth() + 1)
+  const diffMs = target.setHours(0, 0, 0, 0) - new Date(today).setHours(0, 0, 0, 0)
+  return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)))
+}
+
+// The single soonest-due, not-yet-done DCA plan across the whole month.
+export function computeNextDca(plans, log, today) {
+  const monthKey = currentMonthKey(today)
+  const pending = plans.filter((p) => !log.some((l) => l.planId === p.id && l.month === monthKey))
+  if (pending.length === 0) return null
+
+  let best = null
+  for (const plan of pending) {
+    const daysLeft = daysUntilDay(plan.day, today)
+    if (!best || daysLeft < best.daysLeft) best = { asset: plan.asset, daysLeft }
+  }
+  return best
+}
+
 function round(value) {
   return Math.round(value * 100) / 100
 }
