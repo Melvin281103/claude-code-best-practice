@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useClaudeAPI } from '../hooks/useClaudeAPI'
+import HypotheticalProjection from './HypotheticalProjection.jsx'
 import { formatPercent } from '../utils/formatters'
+import { annualizedRateFromCumulative } from '../utils/calculations'
 
 const AI_SYSTEM_PROMPT = `Tu es un assistant pédagogique pour un débutant en investissement long terme (ETF, actions, crypto).
 On te donne les données d'un ETF au format JSON. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, avec exactement ces clés :
@@ -100,6 +102,7 @@ function Perf({ label, value }) {
 
 function ETFDetailModal({ etf, isWatched, onToggleWatchlist, onClose }) {
   const [aiAnalysis, setAiAnalysis] = useState(null)
+  const [showProjection, setShowProjection] = useState(false)
   const { askClaude, loading, error } = useClaudeAPI()
 
   async function runAnalysis() {
@@ -146,6 +149,14 @@ function ETFDetailModal({ etf, isWatched, onToggleWatchlist, onClose }) {
         >
           {isWatched ? 'Retirer de ma watchlist' : 'Ajouter à ma watchlist'}
         </button>
+
+        <button
+          onClick={() => setShowProjection(!showProjection)}
+          className="mt-3 w-full rounded-lg border border-slate-700 py-2 text-sm font-medium text-slate-300"
+        >
+          {showProjection ? 'Masquer la projection hypothétique' : '📈 Voir la projection hypothétique'}
+        </button>
+        {showProjection && <HypotheticalProjection annualReturn={annualizedRateFromCumulative(etf.perf_5y, 5)} />}
 
         <div className="mt-4 border-t border-slate-700 pt-4">
           {!aiAnalysis && (
