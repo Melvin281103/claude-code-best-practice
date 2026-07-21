@@ -16,7 +16,7 @@ const TABS = [
 export default function BottomNav() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-20 flex border-t border-slate-800 bg-card"
+      className="fixed bottom-0 left-0 right-0 z-20 flex border-t border-brume/15 bg-card"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       {TABS.map((tab) => (
@@ -25,13 +25,18 @@ export default function BottomNav() {
           to={tab.to}
           end={tab.to === '/'}
           className={({ isActive }) =>
-            `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${
-              isActive ? 'text-accent' : 'text-slate-400'
-            }`
+            `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${isActive ? 'text-accent' : 'text-brume'}`
           }
         >
-          <span className="text-xl leading-none">{tab.icon}</span>
-          <span>{tab.label}</span>
+          {({ isActive }) => (
+            <>
+              {/* Small waypoint dot marks the active tab, echoing the
+                  trail-marker motif used throughout the app. */}
+              <span className={`h-1 w-1 rounded-full ${isActive ? 'bg-accent' : 'bg-transparent'}`} />
+              <span className="text-xl leading-none">{tab.icon}</span>
+              <span>{tab.label}</span>
+            </>
+          )}
         </NavLink>
       ))}
     </nav>
