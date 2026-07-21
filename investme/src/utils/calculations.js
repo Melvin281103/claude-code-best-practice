@@ -132,6 +132,31 @@ export function daysUntilDay(day, today) {
   return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)))
 }
 
+// Module 5 helper: rough "did you keep up with your DCA plan" gauge over
+// the last few fully-completed calendar months (excluding the current,
+// still-in-progress one). Plans don't record when they were created, so
+// this assumes every current plan was active the whole period - a
+// simplification that's fine for a motivational gauge, not an audit.
+export function dcaDisciplineRate(plans, log, today, monthsToCheck = 3) {
+  if (plans.length === 0) return null
+
+  const months = []
+  for (let i = 1; i <= monthsToCheck; i++) {
+    months.push(currentMonthKey(new Date(today.getFullYear(), today.getMonth() - i, 1)))
+  }
+
+  let expected = 0
+  let done = 0
+  for (const month of months) {
+    for (const plan of plans) {
+      expected++
+      if (log.some((l) => l.planId === plan.id && l.month === month)) done++
+    }
+  }
+
+  return { rate: done / expected, done, expected, months: months.length }
+}
+
 // The single soonest-due, not-yet-done DCA plan across the whole month.
 export function computeNextDca(plans, log, today) {
   const monthKey = currentMonthKey(today)
