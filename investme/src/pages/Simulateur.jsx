@@ -1,0 +1,431 @@
+// MODULE 2 - Simulateur d'Investissement.
+// Lets the user play with starting amount / monthly contribution /
+// duration / asset allocation, and see 3 hypothetical growth scenarios.
+import { useMemo, useState } from 'react'
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import Disclaimer from '../components/Disclaimer.jsx'
+import ScenarioCard from '../components/ScenarioCard.jsx'
+import { useLocalStorage } from '../hooks/useLocalStorage'
+import {
+  simulateGrowth,
+  weightedAnnualReturn,
+  monthlyIncomeFromWithdrawalRule,
+  annualizedRateFromCumulative,
+  getInvestorProfile,
+  HYPOTHETICAL_RATES,
+} from '../utils/calculations'
+import { formatCurrency, formatPercent, formatDate } from '../utils/formatters'
+import { ETFS } from '../data/etfs'
+import { ACTIONS } from '../data/actions'
+import { CRYPTOS } from '../data/cryptos'
+
+// Illustrates the drag fees have on long-term compounding - the
+// simulateGrowth scenarios above don't subtract any TER at all, so this
+// card is the only place in the app where the user sees that cost.
+// 0.05% is a typical cheap ETF World; 0.50% a typical actively-managed
+// fund, so the gap shown here is realistic, not a worst case.
+const LOW_TER = 0.0005
+const HIGH_TER = 0.005
+
+// Fixed hypothetical inflation assumption used only to show the
+// "réaliste" scenario's final value in today's purchasing power, next to
+// its nominal (unadjusted) value - a beginner-friendly way to show that
+// "300k€ in 20 years" doesn't buy as much as "300k€ today".
+const HYPOTHETICAL_INFLATION_RATE = 0.02
+
+const SIMULATEUR_DISCLAIMER =
+  "Ces projections sont basées sur des rendements hypothétiques historiques. Les performances passées ne garantissent pas les performances futures. Ce simulateur est informatif uniquement et ne constitue pas un conseil en investissement au sens de la réglementation AMF."
+
+// For each allocation category, the list of specific real assets the
+// user can plug in instead of the generic category average - each one
+// carries its own historical perf_5y, annualized the same way the
+// Comparateur's "projection hypothétique" does.
+const ASSET_OPTIONS = {
+  etf: ETFS.map((e) => ({ value: e.isin, label: `${e.name} (${e.ticker})`, perf_5y: e.perf_5y })),
+  actions: ACTIONS.map((a) => ({ value: a.ticker, label: `${a.name} (${a.ticker})`, perf_5y: a.perf_5y })),
+  crypto: CRYPTOS.map((c) => ({ value: c.ticker, label: `${c.name} (${c.ticker})`, perf_5y: c.perf_5y })),
+}
+
+export default function Simulateur() {
+  // Read-only: pre-fills the sliders below from the profile set up in
+  // Module 1, so the user doesn't have to re-type what they already told
+  // the app (monthly capacity, horizon, recommended allocation). Nothing
+  // here writes back to the profile - the sliders stay freely editable.
+  const [profile] = useLocalStorage('investme_profile', null)
+  const recommendedAllocation = profile ? getInvestorProfile(profile.crashScore, profile.years).allocation : null
+
+  // Up to 4 saved simulations, so the user can compare "what if I'd put
+  // in 200€ instead of 150€" without having to remember the old numbers.
+  const [history, setHistory] = useLocalStorage('investme_sim_history', [])
+
+  const [startAmount, setStartAmount] = useState(500)
+  const [monthlyContribution, setMonthlyContribution] = useState(profile?.monthly ?? 150)
+  const [years, setYears] = useState(profile?.years ?? 10)
+  const [allocation, setAllocation] = useState(recommendedAllocation ?? { etf: 70, actions: 20, crypto: 10 })
+  // "" for a category means "use the generic historical average" - pick a
+  // specific ETF/action/crypto isin/ticker to test that asset instead.
+  const [assetChoice, setAssetChoice] = useState({ etf: '', actions: '', crypto: '' })
+
+  const totalAllocation = allocation.etf + allocation.actions + allocation.crypto
+  const allocationValid = totalAllocation === 100
+
+  // Swap in a specific asset's own annualized rate for any category
+  // where one was picked, falling back to the generic assumption.
+  const effectiveRates = useMemo(() => {
+    const rates = { ...HYPOTHETICAL_RATES }
+    for (const category of ['etf', 'actions', 'crypto']) {
+      const chosen = ASSET_OPTIONS[category].find((o) => o.value === assetChoice[category])
+      if (chosen) rates[category] = annualizedRateFromCumulative(chosen.perf_5y, 5)
+    }
+    return rates
+  }, [assetChoice])
+
+  // Recompute the whole simulation only when an input actually changes.
+  const scenarios = useMemo(() => {
+    const baseRate = weightedAnnualReturn(allocation, effectiveRates)
+    const rates = {
+      pessimiste: Math.max(baseRate - 0.03, 0),
+      realiste: baseRate,
+      optimiste: baseRate + 0.03,
+    }
+
+    const series = {}
+    for (const [key, rate] of Object.entries(rates)) {
+      series[key] = simulateGrowth({ startAmount, monthlyContribution, years, annualRate: rate })
+    }
+    return { rates, series }
+  }, [startAmount, monthlyContribution, years, allocation, effectiveRates])
+
+  // Same "realiste" scenario, but with a low vs. high TER subtracted from
+  // the annual rate before compounding - shows the fee's cumulative cost
+  // in euros, not just as a small yearly percentage that's easy to ignore.
+  const feeImpact = useMemo(() => {
+    const baseRate = scenarios.rates.realiste
+    const lowFeeSeries = simulateGrowth({ startAmount, monthlyContribution, years, annualRate: Math.max(baseRate - LOW_TER, 0) })
+    const highFeeSeries = simulateGrowth({ startAmount, monthlyContribution, years, annualRate: Math.max(baseRate - HIGH_TER, 0) })
+    return {
+      lowFeeFinal: lowFeeSeries[lowFeeSeries.length - 1].value,
+      highFeeFinal: highFeeSeries[highFeeSeries.length - 1].value,
+    }
+  }, [scenarios.rates.realiste, startAmount, monthlyContribution, years])
+
+  const realisticFinalValue = scenarios.series.realiste[scenarios.series.realiste.length - 1].value
+  const inflationAdjustedValue = realisticFinalValue / Math.pow(1 + HYPOTHETICAL_INFLATION_RATE, years)
+
+  // Merge the 3 series into one array per year, the shape Recharts wants
+  // for drawing 3 areas on the same chart: [{ year, pessimiste, realiste, optimiste }]
+  const chartData = scenarios.series.realiste.map((point, i) => ({
+    year: point.year,
+    pessimiste: scenarios.series.pessimiste[i].value,
+    realiste: scenarios.series.realiste[i].value,
+    optimiste: scenarios.series.optimiste[i].value,
+  }))
+
+  function saveSimulation() {
+    const finalValue = scenarios.series.realiste[scenarios.series.realiste.length - 1].value
+    const entry = {
+      id: crypto.randomUUID(),
+      savedAt: new Date().toISOString(),
+      startAmount,
+      monthlyContribution,
+      years,
+      allocation,
+      finalValue,
+    }
+    setHistory([entry, ...history].slice(0, 4))
+  }
+
+  function loadSimulation(entry) {
+    setStartAmount(entry.startAmount)
+    setMonthlyContribution(entry.monthlyContribution)
+    setYears(entry.years)
+    setAllocation(entry.allocation)
+    setAssetChoice({ etf: '', actions: '', crypto: '' })
+  }
+
+  function deleteSimulation(id) {
+    setHistory(history.filter((h) => h.id !== id))
+  }
+
+  function scenarioProps(key) {
+    const points = scenarios.series[key]
+    const finalValue = points[points.length - 1].value
+    const contributions = points[points.length - 1].contributions
+    const gains = finalValue - contributions
+    const gainPercent = contributions > 0 ? gains / contributions : 0
+    return {
+      finalValue,
+      contributions,
+      gains,
+      gainPercent,
+      monthlyIncome: monthlyIncomeFromWithdrawalRule(finalValue),
+    }
+  }
+
+  return (
+    <div className="px-4 py-6">
+      <h1 className="mb-4 text-2xl font-bold text-white">Simulateur</h1>
+
+      {profile && (
+        <p className="mb-4 text-xs text-brume">
+          Versement, durée et répartition pré-remplis depuis ton profil - modifie-les librement ci-dessous.
+        </p>
+      )}
+
+      <div className="space-y-5 rounded-xl bg-card p-4">
+        <SliderInput
+          label="Montant de départ"
+          value={startAmount}
+          onChange={setStartAmount}
+          min={0}
+          max={10000}
+          step={50}
+          format={formatCurrency}
+        />
+        <SliderInput
+          label="Versement mensuel"
+          value={monthlyContribution}
+          onChange={setMonthlyContribution}
+          min={0}
+          max={2000}
+          step={10}
+          format={formatCurrency}
+        />
+        <SliderInput
+          label="Durée"
+          value={years}
+          onChange={setYears}
+          min={1}
+          max={40}
+          step={1}
+          format={(v) => `${v} ans`}
+        />
+
+        <div>
+          <p className="mb-2 text-sm text-slate-400">Répartition</p>
+
+          <AllocationSlider label="ETF" value={allocation.etf} onChange={(v) => setAllocation({ ...allocation, etf: v })} />
+          <AssetPicker
+            categoryLabel="ETF"
+            options={ASSET_OPTIONS.etf}
+            value={assetChoice.etf}
+            onChange={(v) => setAssetChoice({ ...assetChoice, etf: v })}
+            defaultRate={HYPOTHETICAL_RATES.etf}
+          />
+
+          <AllocationSlider
+            label="Actions"
+            value={allocation.actions}
+            onChange={(v) => setAllocation({ ...allocation, actions: v })}
+          />
+          <AssetPicker
+            categoryLabel="Actions"
+            options={ASSET_OPTIONS.actions}
+            value={assetChoice.actions}
+            onChange={(v) => setAssetChoice({ ...assetChoice, actions: v })}
+            defaultRate={HYPOTHETICAL_RATES.actions}
+          />
+
+          <AllocationSlider
+            label="Crypto"
+            value={allocation.crypto}
+            onChange={(v) => setAllocation({ ...allocation, crypto: v })}
+          />
+          <AssetPicker
+            categoryLabel="Crypto"
+            options={ASSET_OPTIONS.crypto}
+            value={assetChoice.crypto}
+            onChange={(v) => setAssetChoice({ ...assetChoice, crypto: v })}
+            defaultRate={HYPOTHETICAL_RATES.crypto}
+          />
+
+          <p className={`mt-1 text-sm ${allocationValid ? 'text-slate-500' : 'text-red-400'}`}>
+            Total : {totalAllocation} % {!allocationValid && '- doit faire 100 %'}
+          </p>
+        </div>
+
+        <div className="text-sm text-slate-400">
+          Rendement pondéré utilisé (réaliste) :{' '}
+          <span className="font-medium text-accent">{formatPercent(scenarios.rates.realiste)}</span> /an
+        </div>
+      </div>
+
+      <button onClick={saveSimulation} className="mt-3 w-full rounded-lg border border-accent py-2 text-sm font-medium text-accent">
+        💾 Sauvegarder cette simulation
+      </button>
+
+      <div className="mt-5 flex gap-3 overflow-x-auto pb-1">
+        <ScenarioCard title="Pessimiste" colorClass="text-red-400" {...scenarioProps('pessimiste')} />
+        <ScenarioCard title="Réaliste" colorClass="text-accent" {...scenarioProps('realiste')} />
+        <ScenarioCard title="Optimiste" colorClass="text-green-400" {...scenarioProps('optimiste')} />
+      </div>
+
+      <p className="mt-2 text-xs text-slate-500">
+        Scénario réaliste en pouvoir d'achat d'aujourd'hui (inflation hypothétique {formatPercent(HYPOTHETICAL_INFLATION_RATE, 0)}/an) :{' '}
+        <span className="text-slate-300">{formatCurrency(inflationAdjustedValue)}</span> au lieu de{' '}
+        {formatCurrency(realisticFinalValue)} en euros nominaux.
+      </p>
+
+      <div className="mt-5 rounded-xl bg-card p-4">
+        <p className="mb-3 text-sm text-slate-400">Évolution du portefeuille</p>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis dataKey="year" stroke="#94a3b8" tickFormatter={(y) => `${y}a`} />
+              <YAxis stroke="#94a3b8" tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
+              <Tooltip
+                formatter={(value) => formatCurrency(value)}
+                labelFormatter={(year) => `Année ${year}`}
+                contentStyle={{ background: '#1e293b', border: '1px solid #334155' }}
+              />
+              <Area type="monotone" dataKey="pessimiste" stroke="#f87171" fill="#f87171" fillOpacity={0.15} />
+              <Area type="monotone" dataKey="realiste" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} />
+              <Area type="monotone" dataKey="optimiste" stroke="#4ade80" fill="#4ade80" fillOpacity={0.15} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <FeeImpactCard years={years} lowFeeFinal={feeImpact.lowFeeFinal} highFeeFinal={feeImpact.highFeeFinal} />
+
+      {history.length > 0 && (
+        <div className="mt-5 rounded-xl bg-card p-4">
+          <p className="mb-3 text-sm text-slate-400">Simulations sauvegardées ({history.length}/4)</p>
+          <div className="flex flex-col gap-2">
+            {history.map((entry) => (
+              <div key={entry.id} className="rounded-lg bg-app p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-300">{formatDate(entry.savedAt)}</span>
+                  <span className="font-medium text-accent">{formatCurrency(entry.finalValue)}</span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {formatCurrency(entry.startAmount)} de départ + {formatCurrency(entry.monthlyContribution)}/mois ×{' '}
+                  {entry.years} ans · {entry.allocation.etf}/{entry.allocation.actions}/{entry.allocation.crypto} %
+                </p>
+                <div className="mt-2 flex gap-3">
+                  <button onClick={() => loadSimulation(entry)} className="text-xs text-accent">
+                    Recharger
+                  </button>
+                  <button onClick={() => deleteSimulation(entry.id)} className="text-xs text-slate-500">
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-5">
+        <Disclaimer message={SIMULATEUR_DISCLAIMER} />
+      </div>
+    </div>
+  )
+}
+
+// Pedagogical card: same "réaliste" projection, computed once with a
+// cheap ETF's fees and once with a typical actively-managed fund's fees,
+// so the cost of TER shows up as a concrete euro amount over the chosen
+// horizon instead of a small yearly percentage that's easy to overlook.
+function FeeImpactCard({ years, lowFeeFinal, highFeeFinal }) {
+  const gap = lowFeeFinal - highFeeFinal
+
+  return (
+    <div className="mt-5 rounded-xl bg-card p-4">
+      <p className="text-sm text-slate-400">Impact des frais sur {years} ans</p>
+      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <p className="text-slate-400">Frais bas ({formatPercent(LOW_TER, 2)}/an)</p>
+          <p className="text-lg font-semibold text-green-400">{formatCurrency(lowFeeFinal)}</p>
+        </div>
+        <div>
+          <p className="text-slate-400">Frais élevés ({formatPercent(HIGH_TER, 2)}/an)</p>
+          <p className="text-lg font-semibold text-red-400">{formatCurrency(highFeeFinal)}</p>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-slate-500">
+        Sur {years} ans, l'écart de frais seul représente {formatCurrency(gap)} - à rendement identique, c'est pour
+        ça que le TER (frais annuels) est un critère de choix important pour un ETF.
+      </p>
+    </div>
+  )
+}
+
+function SliderInput({ label, value, onChange, min, max, step, format }) {
+  return (
+    <div>
+      <div className="flex justify-between text-sm">
+        <span className="text-slate-400">{label}</span>
+        <span className="font-medium text-white">{format(value)}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="mt-1 w-full accent-accent"
+      />
+    </div>
+  )
+}
+
+// Lets the user swap a category's generic assumption (ex: "ETF: 8%/an")
+// for one specific real asset's own historical rate, so they can test
+// "what if it's actually CW8" instead of just the broad average.
+function AssetPicker({ categoryLabel, options, value, onChange, defaultRate }) {
+  const chosen = options.find((o) => o.value === value)
+  const rate = chosen ? annualizedRateFromCumulative(chosen.perf_5y, 5) : defaultRate
+
+  return (
+    <div className="mb-3">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg border border-slate-700 bg-app px-2 py-1.5 text-xs text-slate-400"
+      >
+        <option value="">{categoryLabel} - moyenne historique ({formatPercent(defaultRate)}/an)</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {chosen && (
+        <p className="mt-1 text-[11px] text-accent">
+          → {formatPercent(rate)}/an, basé sur la performance historique 5 ans de {chosen.label}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function AllocationSlider({ label, value, onChange }) {
+  return (
+    <div className="mb-2">
+      <div className="flex justify-between text-xs">
+        <span className="text-slate-400">{label}</span>
+        <span className="text-slate-300">{value} %</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={5}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-accent"
+      />
+    </div>
+  )
+}
