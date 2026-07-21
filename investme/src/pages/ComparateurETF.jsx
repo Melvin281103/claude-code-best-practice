@@ -4,10 +4,12 @@
 // mode, AI analysis); Actions and Crypto are simpler sortable lists of
 // the same "what can I invest in, and what has it returned" idea.
 import { useMemo, useState } from 'react'
+import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
 import ETFCard from '../components/ETFCard.jsx'
 import HypotheticalProjection from '../components/HypotheticalProjection.jsx'
 import GlossaryTerm from '../components/GlossaryTerm.jsx'
 import { useLiveCryptoPrices } from '../hooks/useLiveCryptoPrices.js'
+import { useCryptoPriceHistory } from '../hooks/useCryptoPriceHistory.js'
 import { usePriceAlerts } from '../hooks/usePriceAlerts.js'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { ETFS, LAST_UPDATED } from '../data/etfs'
@@ -312,6 +314,8 @@ function LivePricesHeader({ live }) {
 
 function SimpleAssetCard({ asset, tag, extra, badge, livePrice, isWatched, onToggleWatchlist, alerts, onAddAlert, onRemoveAlert }) {
   const [showProjection, setShowProjection] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const priceHistory = useCryptoPriceHistory(asset.coingeckoId, showHistory)
   const badgeTone = badge?.tone === 'green' ? 'bg-green-500/20 text-green-400' : 'bg-slate-600/40 text-slate-300'
 
   return (
@@ -348,6 +352,15 @@ function SimpleAssetCard({ asset, tag, extra, badge, livePrice, isWatched, onTog
               {livePrice.eur_24h_change.toFixed(1)} % (24h)
             </span>
           )}
+        </div>
+      )}
+
+      {asset.coingeckoId && (
+        <div className="mt-2">
+          <button onClick={() => setShowHistory(!showHistory)} className="text-xs text-accent">
+            {showHistory ? 'Masquer' : '📉 Voir'} l'historique 30 jours
+          </button>
+          {showHistory && <PriceHistorySparkline history={priceHistory} />}
         </div>
       )}
 
@@ -438,6 +451,29 @@ function PriceAlertSection({ alerts, onAddAlert, onRemoveAlert }) {
           Créer
         </button>
       </div>
+    </div>
+  )
+}
+
+// Small 30-day price line, fetched on demand (not automatically for
+// every crypto card) to stay light on CoinGecko's free API rate limit.
+function PriceHistorySparkline({ history }) {
+  if (history.loading) return <p className="mt-2 text-xs text-slate-500">Chargement de l'historique...</p>
+  if (history.error) return <p className="mt-2 text-xs text-slate-500">{history.error}</p>
+  if (!history.history || history.history.length === 0) return null
+
+  return (
+    <div className="mt-2 h-16">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={history.history}>
+          <Tooltip
+            formatter={(value) => formatCurrencyPrecise(value)}
+            labelFormatter={(timestamp) => new Date(timestamp).toLocaleDateString('fr-FR')}
+            contentStyle={{ background: '#1e293b', border: '1px solid #334155', fontSize: '12px' }}
+          />
+          <Line type="monotone" dataKey="price" stroke="#4ade80" strokeWidth={1.5} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   )
 }
