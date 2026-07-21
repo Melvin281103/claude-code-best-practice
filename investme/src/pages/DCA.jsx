@@ -67,6 +67,8 @@ export default function DCA() {
 
       {showSetup && <DcaSetupForm onAdd={addPlan} onCancel={() => setShowSetup(false)} />}
 
+      <NotificationSettings />
+
       {/* --- Countdown --- */}
       {nextDca && (
         <div className="mt-4 rounded-xl bg-card p-4 text-center">
@@ -127,6 +129,43 @@ export default function DCA() {
 
       {/* --- Average purchase price per asset, from the Journal's trades --- */}
       <AveragePriceTable trades={trades} />
+    </div>
+  )
+}
+
+// Lets the user opt in to a browser notification on the day a DCA is
+// due. Only works while the app is actually open that day - there's no
+// backend to push a reminder while the phone is locked or the tab closed.
+function NotificationSettings() {
+  const supported = typeof Notification !== 'undefined'
+  const [permission, setPermission] = useState(supported ? Notification.permission : 'unsupported')
+
+  if (!supported) return null
+
+  async function requestPermission() {
+    const result = await Notification.requestPermission()
+    setPermission(result)
+  }
+
+  return (
+    <div className="mt-4 rounded-xl bg-card p-4 text-sm">
+      <p className="font-medium text-white">🔔 Rappels de DCA</p>
+      {permission === 'default' && (
+        <>
+          <p className="mt-1 text-xs text-slate-500">
+            Reçois une notification le jour où un versement est prévu (uniquement quand l'app est ouverte).
+          </p>
+          <button onClick={requestPermission} className="mt-3 w-full rounded-lg border border-accent py-2 text-sm font-medium text-accent">
+            Activer les rappels
+          </button>
+        </>
+      )}
+      {permission === 'granted' && <p className="mt-1 text-xs text-green-400">Rappels activés.</p>}
+      {permission === 'denied' && (
+        <p className="mt-1 text-xs text-slate-500">
+          Notifications bloquées - active-les dans les réglages de ton navigateur si tu changes d'avis.
+        </p>
+      )}
     </div>
   )
 }
