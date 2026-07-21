@@ -236,6 +236,7 @@ function ChoiceButton({ selected, onClick, children }) {
 function ProfileResult({ profile, onReset }) {
   const navigate = useNavigate()
   const [showLepInfo, setShowLepInfo] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
   const result = getInvestorProfile(profile.crashScore, profile.years)
 
   const chartData = [
@@ -246,7 +247,12 @@ function ProfileResult({ profile, onReset }) {
 
   return (
     <div className="px-4 py-6">
-      <p className="text-sm text-brume">Ton profil</p>
+      <div className="flex items-start justify-between">
+        <p className="text-sm text-brume">Ton profil</p>
+        <button onClick={() => window.print()} className="print:hidden text-xs text-accent underline">
+          🖨️ Exporter / imprimer
+        </button>
+      </div>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-display text-2xl font-semibold text-papier">Investisseur {result.name}</h1>
         <RiskBadge profileName={result.name} size="lg" />
@@ -313,13 +319,39 @@ function ProfileResult({ profile, onReset }) {
         </Waypoint>
       </TrailPath>
 
-      <button onClick={onReset} className="mt-6 w-full rounded-lg border border-brume/30 py-3 text-brume">
+      <button
+        onClick={() => setShowResetConfirm(true)}
+        className="print:hidden mt-6 w-full rounded-lg border border-brume/30 py-3 text-brume"
+      >
         Modifier mon profil
       </button>
 
-      <div className="mt-4">
+      <div className="print:hidden mt-4">
         <DataBackup />
       </div>
+
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={() => setShowResetConfirm(false)}>
+          <div className="w-full max-w-md rounded-t-xl bg-card p-5" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-2 font-display text-lg font-semibold text-papier">Recommencer le questionnaire ?</h2>
+            <p className="text-sm text-papier/80">
+              Ça efface ton profil actuel (répartition recommandée, objectif) pour refaire les 5 questions depuis le
+              début. Ton journal, ton plan DCA et ta watchlist ne sont pas touchés.
+            </p>
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 rounded-lg border border-brume/30 py-2 font-medium text-brume"
+              >
+                Annuler
+              </button>
+              <button onClick={onReset} className="flex-1 rounded-lg bg-grenat py-2 font-medium text-papier">
+                Oui, recommencer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showLepInfo && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={() => setShowLepInfo(false)}>
