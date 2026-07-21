@@ -22,7 +22,7 @@ import {
   getInvestorProfile,
   HYPOTHETICAL_RATES,
 } from '../utils/calculations'
-import { formatCurrency, formatPercent } from '../utils/formatters'
+import { formatCurrency, formatPercent, formatDate } from '../utils/formatters'
 import { ETFS } from '../data/etfs'
 import { ACTIONS } from '../data/actions'
 import { CRYPTOS } from '../data/cryptos'
@@ -47,6 +47,10 @@ export default function Simulateur() {
   // here writes back to the profile - the sliders stay freely editable.
   const [profile] = useLocalStorage('investme_profile', null)
   const recommendedAllocation = profile ? getInvestorProfile(profile.crashScore, profile.years).allocation : null
+
+  // Up to 4 saved simulations, so the user can compare "what if I'd put
+  // in 200€ instead of 150€" without having to remember the old numbers.
+  const [history, setHistory] = useLocalStorage('investme_sim_history', [])
 
   const [startAmount, setStartAmount] = useState(500)
   const [monthlyContribution, setMonthlyContribution] = useState(profile?.monthly ?? 150)
@@ -94,6 +98,32 @@ export default function Simulateur() {
     realiste: scenarios.series.realiste[i].value,
     optimiste: scenarios.series.optimiste[i].value,
   }))
+
+  function saveSimulation() {
+    const finalValue = scenarios.series.realiste[scenarios.series.realiste.length - 1].value
+    const entry = {
+      id: crypto.randomUUID(),
+      savedAt: new Date().toISOString(),
+      startAmount,
+      monthlyContribution,
+      years,
+      allocation,
+      finalValue,
+    }
+    setHistory([entry, ...history].slice(0, 4))
+  }
+
+  function loadSimulation(entry) {
+    setStartAmount(entry.startAmount)
+    setMonthlyContribution(entry.monthlyContribution)
+    setYears(entry.years)
+    setAllocation(entry.allocation)
+    setAssetChoice({ etf: '', actions: '', crypto: '' })
+  }
+
+  function deleteSimulation(id) {
+    setHistory(history.filter((h) => h.id !== id))
+  }
 
   function scenarioProps(key) {
     const points = scenarios.series[key]
@@ -198,6 +228,10 @@ export default function Simulateur() {
         </div>
       </div>
 
+      <button onClick={saveSimulation} className="mt-3 w-full rounded-lg border border-accent py-2 text-sm font-medium text-accent">
+        💾 Sauvegarder cette simulation
+      </button>
+
       <div className="mt-5 flex gap-3 overflow-x-auto pb-1">
         <ScenarioCard title="Pessimiste" colorClass="text-red-400" {...scenarioProps('pessimiste')} />
         <ScenarioCard title="Réaliste" colorClass="text-accent" {...scenarioProps('realiste')} />
@@ -224,6 +258,34 @@ export default function Simulateur() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {history.length > 0 && (
+        <div className="mt-5 rounded-xl bg-card p-4">
+          <p className="mb-3 text-sm text-slate-400">Simulations sauvegardées ({history.length}/4)</p>
+          <div className="flex flex-col gap-2">
+            {history.map((entry) => (
+              <div key={entry.id} className="rounded-lg bg-app p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-300">{formatDate(entry.savedAt)}</span>
+                  <span className="font-medium text-accent">{formatCurrency(entry.finalValue)}</span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {formatCurrency(entry.startAmount)} de départ + {formatCurrency(entry.monthlyContribution)}/mois ×{' '}
+                  {entry.years} ans · {entry.allocation.etf}/{entry.allocation.actions}/{entry.allocation.crypto} %
+                </p>
+                <div className="mt-2 flex gap-3">
+                  <button onClick={() => loadSimulation(entry)} className="text-xs text-accent">
+                    Recharger
+                  </button>
+                  <button onClick={() => deleteSimulation(entry.id)} className="text-xs text-slate-500">
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-5">
         <Disclaimer message={SIMULATEUR_DISCLAIMER} />
