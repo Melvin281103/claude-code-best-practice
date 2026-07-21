@@ -14,13 +14,12 @@ export const HYPOTHETICAL_RATES = {
 
 // Turns a 0-100 allocation split into one weighted average annual return.
 // Example: 70% ETF + 20% Actions + 10% Crypto -> 0.70*8% + 0.20*8% + 0.10*15%
-export function weightedAnnualReturn(allocationPercent) {
+// "rates" defaults to the generic category assumptions, but the
+// Simulateur can pass a specific asset's own annualized rate instead
+// (e.g. swap "ETF: 8%" for "CW8: 11.8%") to test one real fund/stock/coin.
+export function weightedAnnualReturn(allocationPercent, rates = HYPOTHETICAL_RATES) {
   const { etf, actions, crypto } = allocationPercent
-  return (
-    (etf / 100) * HYPOTHETICAL_RATES.etf +
-    (actions / 100) * HYPOTHETICAL_RATES.actions +
-    (crypto / 100) * HYPOTHETICAL_RATES.crypto
-  )
+  return (etf / 100) * rates.etf + (actions / 100) * rates.actions + (crypto / 100) * rates.crypto
 }
 
 // Projects portfolio value year by year, with a starting amount plus a
