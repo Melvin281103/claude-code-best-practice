@@ -24,7 +24,7 @@ export default function RiskBadge({ profileName, size = 'md' }) {
   return (
     <div className="flex items-center gap-2">
       <span className={`inline-block shrink-0 ${dimension} ${trail.colorClass} ${SHAPE_CLASSES[trail.shape]}`} aria-hidden="true" />
-      {size !== 'sm' && <span className="text-xs text-brume">{trail.trailLabel}</span>}
+      {size !== 'sm' && <span className="text-xs text-ardoise">{trail.trailLabel}</span>}
     </div>
   )
 }
