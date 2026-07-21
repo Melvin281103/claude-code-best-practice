@@ -28,25 +28,25 @@ export default function DashboardSummary() {
 
   return (
     <div className="mb-4 grid grid-cols-2 gap-3">
-      <button onClick={() => navigate('/journal')} className="rounded-xl bg-card p-4 text-left">
-        <p className="text-xs text-slate-400">Portefeuille</p>
-        <p className="mt-1 text-lg font-semibold text-white">{formatCurrency(totalCurrentValue)}</p>
+      <button onClick={() => navigate('/journal')} className="topo-texture rounded-xl bg-card p-4 text-left">
+        <p className="text-xs text-brume">Portefeuille</p>
+        <p className="mt-1 font-display text-lg font-semibold tabular-nums text-papier">{formatCurrency(totalCurrentValue)}</p>
         {totalInvested > 0 && (
-          <p className={`text-xs ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          <p className={`text-xs tabular-nums ${totalPnl >= 0 ? 'text-sentier' : 'text-grenat'}`}>
             {totalPnl >= 0 ? '+' : ''}
             {formatCurrency(totalPnl)} ({formatPercent(totalPnlPercent)})
           </p>
         )}
       </button>
 
-      <button onClick={() => navigate('/dca')} className="rounded-xl bg-card p-4 text-left">
-        <p className="text-xs text-slate-400">Prochain DCA</p>
+      <button onClick={() => navigate('/dca')} className="topo-texture rounded-xl bg-card p-4 text-left">
+        <p className="text-xs text-brume">Prochain DCA</p>
         {nextDca ? (
-          <p className="mt-1 text-lg font-semibold text-white">
-            {nextDca.asset} <span className="text-sm font-normal text-slate-400">J-{nextDca.daysLeft}</span>
+          <p className="mt-1 font-display text-lg font-semibold text-papier">
+            {nextDca.asset} <span className="font-sans text-sm font-normal text-ambre">J-{nextDca.daysLeft}</span>
           </p>
         ) : (
-          <p className="mt-1 text-sm text-slate-500">{dcaPlans.length === 0 ? 'Aucun plan' : 'Tout est fait !'}</p>
+          <p className="mt-1 text-sm text-brume">{dcaPlans.length === 0 ? 'Aucun plan' : 'Tout est fait !'}</p>
         )}
       </button>
     </div>
