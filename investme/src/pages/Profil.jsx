@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { getInvestorProfile } from '../utils/calculations'
+import DailyTipCard from '../components/DailyTipCard.jsx'
 
 // Colors for the 3 slices of the allocation donut chart.
 const SLICE_COLORS = { etf: '#6366f1', actions: '#22c55e', crypto: '#f59e0b' }
@@ -253,6 +254,10 @@ function ProfileResult({ profile, onReset }) {
             </PieChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      <div className="mt-4">
+        <DailyTipCard profile={profile} />
       </div>
 
       <div className="mt-6 flex flex-col gap-3">
