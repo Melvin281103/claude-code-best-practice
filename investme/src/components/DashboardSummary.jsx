@@ -3,6 +3,10 @@
 // DCA (from the DCA plan). Read-only here - editing still happens on
 // their own dedicated pages, this is just a quick overview so the user
 // doesn't have to hop between tabs to see where they stand.
+//
+// Styled as the "Instrument de rando" 3-cell stat grid (Valeur / P&L /
+// DCA) from the design directions, on the light "Carte de jour" palette
+// used for the whole Profil result screen.
 import { useNavigate } from 'react-router-dom'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { buildPositions, computeNextDca } from '../utils/calculations'
@@ -27,26 +31,33 @@ export default function DashboardSummary() {
   if (trades.length === 0 && dcaPlans.length === 0) return null
 
   return (
-    <div className="mb-4 grid grid-cols-2 gap-3">
-      <button onClick={() => navigate('/journal')} className="topo-texture rounded-xl bg-card p-4 text-left">
-        <p className="text-xs text-brume">Portefeuille</p>
-        <p className="mt-1 font-display text-lg font-semibold tabular-nums text-papier">{formatCurrency(totalCurrentValue)}</p>
-        {totalInvested > 0 && (
-          <p className={`text-xs tabular-nums ${totalPnl >= 0 ? 'text-sentier' : 'text-grenat'}`}>
-            {totalPnl >= 0 ? '+' : ''}
-            {formatCurrency(totalPnl)} ({formatPercent(totalPnlPercent)})
-          </p>
-        )}
+    <div className="mb-4 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-app/8 bg-app/8">
+      <button onClick={() => navigate('/journal')} className="bg-creme p-3 text-left">
+        <p className="text-[10px] uppercase tracking-wide text-ardoise">Valeur</p>
+        <p className="mt-1 font-display text-lg font-semibold tabular-nums text-app">{formatCurrency(totalCurrentValue)}</p>
       </button>
 
-      <button onClick={() => navigate('/dca')} className="topo-texture rounded-xl bg-card p-4 text-left">
-        <p className="text-xs text-brume">Prochain DCA</p>
+      <button onClick={() => navigate('/journal')} className="bg-creme p-3 text-left">
+        <p className="text-[10px] uppercase tracking-wide text-ardoise">P&amp;L</p>
+        <p className={`mt-1 font-display text-lg font-semibold tabular-nums ${totalPnl >= 0 ? 'text-mousse' : 'text-grenat'}`}>
+          {totalInvested > 0 ? (
+            <>
+              {totalPnl >= 0 ? '+' : ''}
+              {formatCurrency(totalPnl)}
+            </>
+          ) : (
+            '—'
+          )}
+        </p>
+        {totalInvested > 0 && <p className="text-[11px] text-ardoise">{formatPercent(totalPnlPercent)}</p>}
+      </button>
+
+      <button onClick={() => navigate('/dca')} className="bg-creme p-3 text-left">
+        <p className="text-[10px] uppercase tracking-wide text-ardoise">DCA</p>
         {nextDca ? (
-          <p className="mt-1 font-display text-lg font-semibold text-papier">
-            {nextDca.asset} <span className="font-sans text-sm font-normal text-ambre">J-{nextDca.daysLeft}</span>
-          </p>
+          <p className="mt-1 font-display text-lg font-semibold text-app">J-{nextDca.daysLeft}</p>
         ) : (
-          <p className="mt-1 text-sm text-brume">{dcaPlans.length === 0 ? 'Aucun plan' : 'Tout est fait !'}</p>
+          <p className="mt-1 text-sm text-ardoise">{dcaPlans.length === 0 ? 'Aucun plan' : 'Fait'}</p>
         )}
       </button>
     </div>
