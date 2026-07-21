@@ -12,12 +12,14 @@ import Journal from './pages/Journal.jsx'
 import DCA from './pages/DCA.jsx'
 import { useDcaNotifications } from './hooks/useDcaNotifications.js'
 import { useRebalanceReminder } from './hooks/useRebalanceReminder.js'
+import { useProfileReviewReminder } from './hooks/useProfileReviewReminder.js'
 
 export default function App() {
   // Runs once app-wide (not tied to the DCA tab) so the reminder fires
   // no matter which page the user lands on when opening InvestMe.
   useDcaNotifications()
   useRebalanceReminder()
+  useProfileReviewReminder()
 
   return (
     // mx-auto + max-w-md keeps the app centered and phone-width even on
