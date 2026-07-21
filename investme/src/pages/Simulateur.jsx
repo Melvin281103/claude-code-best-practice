@@ -27,6 +27,20 @@ import { ETFS } from '../data/etfs'
 import { ACTIONS } from '../data/actions'
 import { CRYPTOS } from '../data/cryptos'
 
+// Illustrates the drag fees have on long-term compounding - the
+// simulateGrowth scenarios above don't subtract any TER at all, so this
+// card is the only place in the app where the user sees that cost.
+// 0.05% is a typical cheap ETF World; 0.50% a typical actively-managed
+// fund, so the gap shown here is realistic, not a worst case.
+const LOW_TER = 0.0005
+const HIGH_TER = 0.005
+
+// Fixed hypothetical inflation assumption used only to show the
+// "réaliste" scenario's final value in today's purchasing power, next to
+// its nominal (unadjusted) value - a beginner-friendly way to show that
+// "300k€ in 20 years" doesn't buy as much as "300k€ today".
+const HYPOTHETICAL_INFLATION_RATE = 0.02
+
 const SIMULATEUR_DISCLAIMER =
   "Ces projections sont basées sur des rendements hypothétiques historiques. Les performances passées ne garantissent pas les performances futures. Ce simulateur est informatif uniquement et ne constitue pas un conseil en investissement au sens de la réglementation AMF."
 
@@ -89,6 +103,22 @@ export default function Simulateur() {
     }
     return { rates, series }
   }, [startAmount, monthlyContribution, years, allocation, effectiveRates])
+
+  // Same "realiste" scenario, but with a low vs. high TER subtracted from
+  // the annual rate before compounding - shows the fee's cumulative cost
+  // in euros, not just as a small yearly percentage that's easy to ignore.
+  const feeImpact = useMemo(() => {
+    const baseRate = scenarios.rates.realiste
+    const lowFeeSeries = simulateGrowth({ startAmount, monthlyContribution, years, annualRate: Math.max(baseRate - LOW_TER, 0) })
+    const highFeeSeries = simulateGrowth({ startAmount, monthlyContribution, years, annualRate: Math.max(baseRate - HIGH_TER, 0) })
+    return {
+      lowFeeFinal: lowFeeSeries[lowFeeSeries.length - 1].value,
+      highFeeFinal: highFeeSeries[highFeeSeries.length - 1].value,
+    }
+  }, [scenarios.rates.realiste, startAmount, monthlyContribution, years])
+
+  const realisticFinalValue = scenarios.series.realiste[scenarios.series.realiste.length - 1].value
+  const inflationAdjustedValue = realisticFinalValue / Math.pow(1 + HYPOTHETICAL_INFLATION_RATE, years)
 
   // Merge the 3 series into one array per year, the shape Recharts wants
   // for drawing 3 areas on the same chart: [{ year, pessimiste, realiste, optimiste }]
@@ -238,6 +268,12 @@ export default function Simulateur() {
         <ScenarioCard title="Optimiste" colorClass="text-green-400" {...scenarioProps('optimiste')} />
       </div>
 
+      <p className="mt-2 text-xs text-slate-500">
+        Scénario réaliste en pouvoir d'achat d'aujourd'hui (inflation hypothétique {formatPercent(HYPOTHETICAL_INFLATION_RATE, 0)}/an) :{' '}
+        <span className="text-slate-300">{formatCurrency(inflationAdjustedValue)}</span> au lieu de{' '}
+        {formatCurrency(realisticFinalValue)} en euros nominaux.
+      </p>
+
       <div className="mt-5 rounded-xl bg-card p-4">
         <p className="mb-3 text-sm text-slate-400">Évolution du portefeuille</p>
         <div className="h-64">
@@ -258,6 +294,8 @@ export default function Simulateur() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      <FeeImpactCard years={years} lowFeeFinal={feeImpact.lowFeeFinal} highFeeFinal={feeImpact.highFeeFinal} />
 
       {history.length > 0 && (
         <div className="mt-5 rounded-xl bg-card p-4">
@@ -290,6 +328,34 @@ export default function Simulateur() {
       <div className="mt-5">
         <Disclaimer message={SIMULATEUR_DISCLAIMER} />
       </div>
+    </div>
+  )
+}
+
+// Pedagogical card: same "réaliste" projection, computed once with a
+// cheap ETF's fees and once with a typical actively-managed fund's fees,
+// so the cost of TER shows up as a concrete euro amount over the chosen
+// horizon instead of a small yearly percentage that's easy to overlook.
+function FeeImpactCard({ years, lowFeeFinal, highFeeFinal }) {
+  const gap = lowFeeFinal - highFeeFinal
+
+  return (
+    <div className="mt-5 rounded-xl bg-card p-4">
+      <p className="text-sm text-slate-400">Impact des frais sur {years} ans</p>
+      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <p className="text-slate-400">Frais bas ({formatPercent(LOW_TER, 2)}/an)</p>
+          <p className="text-lg font-semibold text-green-400">{formatCurrency(lowFeeFinal)}</p>
+        </div>
+        <div>
+          <p className="text-slate-400">Frais élevés ({formatPercent(HIGH_TER, 2)}/an)</p>
+          <p className="text-lg font-semibold text-red-400">{formatCurrency(highFeeFinal)}</p>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-slate-500">
+        Sur {years} ans, l'écart de frais seul représente {formatCurrency(gap)} - à rendement identique, c'est pour
+        ça que le TER (frais annuels) est un critère de choix important pour un ETF.
+      </p>
     </div>
   )
 }
