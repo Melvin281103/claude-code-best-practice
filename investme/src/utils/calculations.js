@@ -75,6 +75,16 @@ export function getInvestorProfile(score, years) {
   return { name: 'Dynamique', allocation: { etf: 50, actions: 30, crypto: 20 } }
 }
 
+// Picks one entry from a list deterministically based on today's date, so
+// everyone (and every reload) sees the SAME tip on a given day, and it
+// automatically rotates to the next one tomorrow - no state, no backend,
+// no API call needed.
+export function getTipOfTheDay(tips, date = new Date()) {
+  const startOfYear = new Date(date.getFullYear(), 0, 0)
+  const dayOfYear = Math.floor((date - startOfYear) / (1000 * 60 * 60 * 24))
+  return tips[dayOfYear % tips.length]
+}
+
 // Module 5 helper: average price paid per unit across a list of "Achat"
 // trades for one asset - the classic DCA "average cost basis" figure.
 export function averagePurchasePrice(trades) {
