@@ -1,7 +1,10 @@
 // One ETF's card in the Comparateur list, plus its detail modal and
 // the "Analyse IA" (Claude API) expandable section.
+// The watchlist state itself lives one level up in ComparateurETF.jsx
+// (shared across the ETF/Actions/Crypto tabs) and is passed down here as
+// plain props, so there's a single source of truth instead of each card
+// keeping its own disconnected copy.
 import { useState } from 'react'
-import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useClaudeAPI } from '../hooks/useClaudeAPI'
 import HypotheticalProjection from './HypotheticalProjection.jsx'
 import { formatPercent } from '../utils/formatters'
@@ -18,14 +21,8 @@ On te donne les données d'un ETF au format JSON. Réponds UNIQUEMENT avec un ob
 }
 Ne recommande jamais explicitement d'acheter ou de vendre.`
 
-export default function ETFCard({ etf, compareMode, selected, onToggleSelect }) {
+export default function ETFCard({ etf, compareMode, selected, onToggleSelect, isWatched, onToggleWatchlist }) {
   const [showDetail, setShowDetail] = useState(false)
-  const [watchlist, setWatchlist] = useLocalStorage('investme_watchlist', [])
-  const isWatched = watchlist.includes(etf.isin)
-
-  function toggleWatchlist() {
-    setWatchlist(isWatched ? watchlist.filter((isin) => isin !== etf.isin) : [...watchlist, etf.isin])
-  }
 
   function handleCardClick() {
     if (compareMode) {
@@ -50,13 +47,25 @@ export default function ETFCard({ etf, compareMode, selected, onToggleSelect }) 
               {etf.ticker} · {etf.index}
             </p>
           </div>
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-              etf.pea_eligible ? 'bg-green-500/20 text-green-400' : 'bg-slate-600/40 text-slate-300'
-            }`}
-          >
-            {etf.pea_eligible ? 'PEA' : 'CTO'}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                etf.pea_eligible ? 'bg-green-500/20 text-green-400' : 'bg-slate-600/40 text-slate-300'
+              }`}
+            >
+              {etf.pea_eligible ? 'PEA' : 'CTO'}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleWatchlist()
+              }}
+              className="text-lg leading-none"
+              aria-label={isWatched ? 'Retirer de la watchlist' : 'Ajouter à la watchlist'}
+            >
+              {isWatched ? '⭐' : '☆'}
+            </button>
+          </div>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -81,7 +90,7 @@ export default function ETFCard({ etf, compareMode, selected, onToggleSelect }) 
       </div>
 
       {showDetail && (
-        <ETFDetailModal etf={etf} isWatched={isWatched} onToggleWatchlist={toggleWatchlist} onClose={() => setShowDetail(false)} />
+        <ETFDetailModal etf={etf} isWatched={isWatched} onToggleWatchlist={onToggleWatchlist} onClose={() => setShowDetail(false)} />
       )}
     </>
   )
