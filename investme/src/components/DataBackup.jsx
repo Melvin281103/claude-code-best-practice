@@ -66,9 +66,9 @@ export default function DataBackup() {
   }
 
   return (
-    <div className="rounded-xl bg-card p-4">
-      <p className="text-sm font-medium text-white">💾 Sauvegarde de tes données</p>
-      <p className="mt-1 text-xs text-slate-500">
+    <div className="topo-texture rounded-xl bg-card p-4">
+      <p className="text-sm font-medium text-papier">💾 Sauvegarde de tes données</p>
+      <p className="mt-1 text-xs text-brume">
         Tout est stocké uniquement dans ce navigateur. Exporte régulièrement un fichier de secours pour ne rien
         perdre si tu changes d'appareil ou vides ton cache.
       </p>
@@ -77,14 +77,14 @@ export default function DataBackup() {
         <button onClick={handleExport} className="flex-1 rounded-lg border border-accent py-2 text-sm font-medium text-accent">
           Exporter mes données
         </button>
-        <label className="flex-1 cursor-pointer rounded-lg border border-slate-700 py-2 text-center text-sm font-medium text-slate-300">
+        <label className="flex-1 cursor-pointer rounded-lg border border-brume/30 py-2 text-center text-sm font-medium text-brume">
           Importer
           <input type="file" accept="application/json" onChange={handleImport} className="hidden" />
         </label>
       </div>
 
-      {importError && <p className="mt-2 text-xs text-red-400">{importError}</p>}
-      {importedOk && <p className="mt-2 text-xs text-green-400">Import réussi, rechargement en cours...</p>}
+      {importError && <p className="mt-2 text-xs text-grenat">{importError}</p>}
+      {importedOk && <p className="mt-2 text-xs text-sentier">Import réussi, rechargement en cours...</p>}
     </div>
   )
 }
