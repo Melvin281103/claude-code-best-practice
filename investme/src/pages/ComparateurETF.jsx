@@ -1,9 +1,13 @@
 // MODULE 3 - Comparateur ETF.
-// Browse the hardcoded ETF database, filter/sort it, and optionally pick
-// up to 3 ETFs to compare side-by-side in a table.
+// Browse 3 hardcoded asset databases (ETF, Actions, Crypto) split into
+// tabs. The ETF tab has the full experience (filters, watchlist, compare
+// mode, AI analysis); Actions and Crypto are simpler sortable lists of
+// the same "what can I invest in, and what has it returned" idea.
 import { useMemo, useState } from 'react'
 import ETFCard from '../components/ETFCard.jsx'
 import { ETFS, LAST_UPDATED } from '../data/etfs'
+import { ACTIONS, ACTIONS_LAST_UPDATED } from '../data/actions'
+import { CRYPTOS, CRYPTOS_LAST_UPDATED } from '../data/cryptos'
 import { formatPercent, formatDate } from '../utils/formatters'
 
 const SORT_OPTIONS = [
@@ -12,9 +16,22 @@ const SORT_OPTIONS = [
   { value: 'aum_bn', label: 'Encours' },
 ]
 
+const PERF_SORT_OPTIONS = [
+  { value: 'perf_1y', label: 'Perf 1 an' },
+  { value: 'perf_3y', label: 'Perf 3 ans' },
+  { value: 'perf_5y', label: 'Perf 5 ans' },
+]
+
 const COURTIERS = ['Trade Republic', 'XTB', 'Fortuneo']
 
+const TABS = [
+  { value: 'etf', label: 'ETF' },
+  { value: 'actions', label: 'Actions' },
+  { value: 'crypto', label: 'Crypto' },
+]
+
 export default function ComparateurETF() {
+  const [activeTab, setActiveTab] = useState('etf')
   const [peaOnly, setPeaOnly] = useState(false)
   const [capitalisantOnly, setCapitalisantOnly] = useState(false)
   const [sortBy, setSortBy] = useState('ter')
@@ -51,77 +68,197 @@ export default function ComparateurETF() {
   return (
     <div className="px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Comparateur ETF</h1>
-        <button
-          onClick={() => setCompareMode(!compareMode)}
-          className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-            compareMode ? 'bg-accent text-white' : 'border border-slate-700 text-slate-300'
-          }`}
-        >
-          {compareMode ? 'Quitter comparaison' : 'Comparer'}
-        </button>
-      </div>
-
-      {/* --- Filter bar --- */}
-      <div className="space-y-3 rounded-xl bg-card p-4">
-        <div className="flex flex-wrap gap-2">
-          <ToggleChip active={peaOnly} onClick={() => setPeaOnly(!peaOnly)} label="PEA uniquement" />
-          <ToggleChip
-            active={capitalisantOnly}
-            onClick={() => setCapitalisantOnly(!capitalisantOnly)}
-            label="Capitalisant"
-          />
-        </div>
-
-        <div>
-          <p className="mb-1 text-xs text-slate-400">Trier par</p>
-          <div className="flex gap-2">
-            {SORT_OPTIONS.map((opt) => (
-              <ToggleChip key={opt.value} active={sortBy === opt.value} onClick={() => setSortBy(opt.value)} label={opt.label} />
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <p className="mb-1 text-xs text-slate-400">Mon courtier</p>
-          <div className="flex flex-wrap gap-2">
-            {COURTIERS.map((courtier) => (
-              <ToggleChip
-                key={courtier}
-                active={courtierFilter === courtier}
-                onClick={() => setCourtierFilter(courtierFilter === courtier ? null : courtier)}
-                label={courtier}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {compareMode && (
-        <p className="mt-3 text-sm text-slate-400">
-          Sélectionne jusqu'à 3 ETF ({selectedIsins.length}/3) en tapant sur leur carte.
-        </p>
-      )}
-
-      {compareMode && selectedEtfs.length >= 2 && <CompareTable etfs={selectedEtfs} />}
-
-      {/* --- ETF list --- */}
-      <div className="mt-4 flex flex-col gap-3">
-        {visibleEtfs.map((etf) => (
-          <ETFCard
-            key={etf.isin}
-            etf={etf}
-            compareMode={compareMode}
-            selected={selectedIsins.includes(etf.isin)}
-            onToggleSelect={toggleSelect}
-          />
-        ))}
-        {visibleEtfs.length === 0 && (
-          <p className="py-8 text-center text-sm text-slate-500">Aucun ETF ne correspond à ces filtres.</p>
+        <h1 className="text-2xl font-bold text-white">Comparateur</h1>
+        {activeTab === 'etf' && (
+          <button
+            onClick={() => setCompareMode(!compareMode)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+              compareMode ? 'bg-accent text-white' : 'border border-slate-700 text-slate-300'
+            }`}
+          >
+            {compareMode ? 'Quitter comparaison' : 'Comparer'}
+          </button>
         )}
       </div>
 
-      <p className="mt-4 text-center text-xs text-slate-600">Données mises à jour le {formatDate(LAST_UPDATED)}</p>
+      {/* --- Tab switcher: ETF / Actions / Crypto --- */}
+      <div className="mb-4 flex gap-2">
+        {TABS.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => setActiveTab(tab.value)}
+            className={`flex-1 rounded-lg py-2 text-sm font-medium ${
+              activeTab === tab.value ? 'bg-accent text-white' : 'bg-slate-700/50 text-slate-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'etf' && (
+        <>
+          {/* --- Filter bar --- */}
+          <div className="space-y-3 rounded-xl bg-card p-4">
+            <div className="flex flex-wrap gap-2">
+              <ToggleChip active={peaOnly} onClick={() => setPeaOnly(!peaOnly)} label="PEA uniquement" />
+              <ToggleChip
+                active={capitalisantOnly}
+                onClick={() => setCapitalisantOnly(!capitalisantOnly)}
+                label="Capitalisant"
+              />
+            </div>
+
+            <div>
+              <p className="mb-1 text-xs text-slate-400">Trier par</p>
+              <div className="flex gap-2">
+                {SORT_OPTIONS.map((opt) => (
+                  <ToggleChip key={opt.value} active={sortBy === opt.value} onClick={() => setSortBy(opt.value)} label={opt.label} />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1 text-xs text-slate-400">Mon courtier</p>
+              <div className="flex flex-wrap gap-2">
+                {COURTIERS.map((courtier) => (
+                  <ToggleChip
+                    key={courtier}
+                    active={courtierFilter === courtier}
+                    onClick={() => setCourtierFilter(courtierFilter === courtier ? null : courtier)}
+                    label={courtier}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {compareMode && (
+            <p className="mt-3 text-sm text-slate-400">
+              Sélectionne jusqu'à 3 ETF ({selectedIsins.length}/3) en tapant sur leur carte.
+            </p>
+          )}
+
+          {compareMode && selectedEtfs.length >= 2 && <CompareTable etfs={selectedEtfs} />}
+
+          {/* --- ETF list --- */}
+          <div className="mt-4 flex flex-col gap-3">
+            {visibleEtfs.map((etf) => (
+              <ETFCard
+                key={etf.isin}
+                etf={etf}
+                compareMode={compareMode}
+                selected={selectedIsins.includes(etf.isin)}
+                onToggleSelect={toggleSelect}
+              />
+            ))}
+            {visibleEtfs.length === 0 && (
+              <p className="py-8 text-center text-sm text-slate-500">Aucun ETF ne correspond à ces filtres.</p>
+            )}
+          </div>
+
+          <p className="mt-4 text-center text-xs text-slate-600">Données mises à jour le {formatDate(LAST_UPDATED)}</p>
+        </>
+      )}
+
+      {activeTab === 'actions' && (
+        <SimpleAssetTab
+          assets={ACTIONS}
+          lastUpdated={ACTIONS_LAST_UPDATED}
+          emptyLabel="Aucune action dans la base."
+          getTag={(a) => a.secteur}
+          getExtra={(a) => ({ label: 'Dividende', value: formatPercent(a.dividende_yield, 1) })}
+          getBadge={(a) => (a.pea_eligible ? { label: 'PEA', tone: 'green' } : { label: 'CTO', tone: 'grey' })}
+        />
+      )}
+
+      {activeTab === 'crypto' && (
+        <SimpleAssetTab
+          assets={CRYPTOS}
+          lastUpdated={CRYPTOS_LAST_UPDATED}
+          emptyLabel="Aucune crypto dans la base."
+          getTag={(a) => a.categorie}
+          getExtra={(a) => ({ label: 'Volatilité', value: a.volatilite })}
+          getBadge={() => null}
+        />
+      )}
+    </div>
+  )
+}
+
+// Shared list view for the Actions and Crypto tabs: sortable by
+// performance, one lightweight card per asset. Simpler than the ETF tab
+// on purpose (no watchlist/compare/AI) to keep this addition contained.
+function SimpleAssetTab({ assets, lastUpdated, emptyLabel, getTag, getExtra, getBadge }) {
+  const [sortBy, setSortBy] = useState('perf_1y')
+
+  const sorted = useMemo(() => [...assets].sort((a, b) => b[sortBy] - a[sortBy]), [assets, sortBy])
+
+  return (
+    <div>
+      <div className="rounded-xl bg-card p-4">
+        <p className="mb-1 text-xs text-slate-400">Trier par</p>
+        <div className="flex gap-2">
+          {PERF_SORT_OPTIONS.map((opt) => (
+            <ToggleChip key={opt.value} active={sortBy === opt.value} onClick={() => setSortBy(opt.value)} label={opt.label} />
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3">
+        {sorted.map((asset) => (
+          <SimpleAssetCard key={asset.ticker} asset={asset} tag={getTag(asset)} extra={getExtra(asset)} badge={getBadge(asset)} />
+        ))}
+        {sorted.length === 0 && <p className="py-8 text-center text-sm text-slate-500">{emptyLabel}</p>}
+      </div>
+
+      <p className="mt-4 text-center text-xs text-slate-600">Données mises à jour le {formatDate(lastUpdated)}</p>
+    </div>
+  )
+}
+
+function SimpleAssetCard({ asset, tag, extra, badge }) {
+  const badgeTone = badge?.tone === 'green' ? 'bg-green-500/20 text-green-400' : 'bg-slate-600/40 text-slate-300'
+
+  return (
+    <div className="rounded-xl bg-card p-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-semibold text-white">{asset.name}</p>
+          <p className="text-xs text-slate-400">
+            {asset.ticker} · {tag}
+          </p>
+        </div>
+        {badge && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeTone}`}>{badge.label}</span>}
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+        <PerfCell label="1 an" value={asset.perf_1y} />
+        <PerfCell label="3 ans" value={asset.perf_3y} />
+        <PerfCell label="5 ans" value={asset.perf_5y} />
+      </div>
+
+      <div className="mt-3 flex items-center justify-between text-xs">
+        <span className="text-slate-500">
+          {extra.label} : <span className="text-slate-300">{extra.value}</span>
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {asset.courtiers.map((courtier) => (
+            <span key={courtier} className="rounded bg-slate-700/50 px-2 py-0.5 text-slate-300">
+              {courtier}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PerfCell({ label, value }) {
+  return (
+    <div>
+      <p className="text-slate-500">{label}</p>
+      <p className={value >= 0 ? 'text-green-400' : 'text-red-400'}>{formatPercent(value)}</p>
     </div>
   )
 }
