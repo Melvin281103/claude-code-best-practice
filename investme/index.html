@@ -12,7 +12,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
     <!-- PWA metadata: theme-color paints the browser's address bar / status bar -->
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#10201A" />
     <meta name="description" content="InvestMe - assistant personnel d'aide à la décision d'investissement" />
 
     <!-- iOS-specific tags so "Add to Home Screen" behaves like a real app -->
@@ -28,14 +28,29 @@
     <title>InvestMe</title>
 
     <!--
+      Design system: "Le Sentier d'Investissement" (the investment trail).
+      Long-term investing framed as an expedition, not a sprint - a
+      topographic-map feel instead of the generic navy/indigo SaaS look.
+      Fraunces (display serif, ledger/signage character) for headings and
+      key figures, Work Sans (humanist, mobile-legible) for body text.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!--
       Tailwind CSS loaded from a CDN (no build step / no config file needed).
       The script scans the page's class names and generates matching CSS
       on the fly, right in the browser.
     -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Extend Tailwind's default colors with InvestMe's dark theme palette
-      // so we can write classes like bg-app, bg-card, text-accent everywhere.
+      // Extend Tailwind's default colors/fonts with InvestMe's "Sentier"
+      // palette so we can write classes like bg-app, bg-card, text-accent,
+      // text-sentier, font-display everywhere.
       // Guarded with "if (window.tailwind)" so a slow/blocked network
       // (offline, ad-blocker, restrictive proxy) can't throw an uncaught
       // error here and break the rest of the page's scripts.
@@ -44,9 +59,19 @@
           theme: {
             extend: {
               colors: {
-                app: '#0f172a', // page background
-                card: '#1e293b', // card background
-                accent: '#6366f1', // indigo accent color
+                app: '#10201A', // Nuit de Sapin - page background
+                card: '#1B2E24', // Écorce - card background
+                accent: '#4C9A6A', // Sentier - primary accent (was indigo)
+                sentier: '#4C9A6A', // same as accent, named for the risk-badge system
+                glacier: '#3E7CA6', // "Équilibré" badge, secondary accent
+                grenat: '#8C3B4A', // "Dynamique" badge, losses/danger
+                ambre: '#D99A3E', // waypoints, deadlines, warnings
+                papier: '#F2EDE3', // warm off-white - primary text
+                brume: '#8FA396', // muted secondary text
+              },
+              fontFamily: {
+                display: ['Fraunces', 'Georgia', 'serif'],
+                sans: ['"Work Sans"', 'system-ui', 'sans-serif'],
               },
             },
           },
@@ -55,8 +80,34 @@
         console.warn('InvestMe: Tailwind CDN did not load - the app will be unstyled. Check your internet connection.')
       }
     </script>
+
+    <!--
+      Faint topographic contour-line texture for cards - the app's visual
+      signature, kept subtle (4% opacity) so it reads as a texture, not an
+      illustration. A plain CSS class since it's a repeating background
+      image, easier to express here than as a Tailwind utility.
+    -->
+    <style>
+      .topo-texture {
+        background-image: repeating-radial-gradient(
+          circle at 20% 30%,
+          transparent 0,
+          transparent 18px,
+          rgba(242, 237, 227, 0.04) 19px
+        );
+      }
+
+      /* Visible keyboard focus in Ambre - the browser default outline is
+         low-contrast against this dark palette, so every focusable
+         element gets a consistent, clearly visible ring instead. */
+      :focus-visible {
+        outline: 2px solid #d99a3e;
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
+    </style>
   </head>
-  <body class="bg-app text-slate-100 antialiased">
+  <body class="bg-app font-sans text-papier antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
