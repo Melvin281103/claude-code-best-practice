@@ -12,6 +12,7 @@ import DataBackup from '../components/DataBackup.jsx'
 import DashboardSummary from '../components/DashboardSummary.jsx'
 import RiskBadge from '../components/RiskBadge.jsx'
 import AllocationCalculator from '../components/AllocationCalculator.jsx'
+import GoalProgress from '../components/GoalProgress.jsx'
 
 // Colors for the 3 slices of the allocation donut chart - Sentier/Glacier/Ambre,
 // the same 3 accents used across the whole app (never Grenat, reserved for losses).
@@ -46,7 +47,7 @@ export default function Profil() {
         setStep={setStep}
         answers={answers}
         setAnswers={setAnswers}
-        onFinish={() => setProfile(answers)}
+        onFinish={() => setProfile({ ...answers, createdAt: new Date().toISOString() })}
       />
     )
   }
@@ -250,6 +251,8 @@ function ProfileResult({ profile, onReset }) {
         <h1 className="font-display text-2xl font-semibold text-papier">Investisseur {result.name}</h1>
         <RiskBadge profileName={result.name} size="lg" />
       </div>
+
+      <GoalProgress goal={profile.goal} />
 
       <DashboardSummary />
 
